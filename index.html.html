@@ -1,0 +1,569 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard Executivo — Grupo MNGT</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+<style>
+  :root {
+    --bg: #0f1117;
+    --bg2: #1a1d27;
+    --bg3: #22263a;
+    --border: rgba(255,255,255,0.08);
+    --text: #e8e7e1;
+    --muted: #888780;
+    --blue: #378ADD;
+    --teal: #1D9E75;
+    --amber: #EF9F27;
+    --green: #639922;
+    --red: #E24B4A;
+    --radius: 10px;
+    --radius-sm: 6px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: -apple-system, 'Segoe UI', sans-serif; font-size: 14px; line-height: 1.5; }
+
+  .wrapper { max-width: 1280px; margin: 0 auto; padding: 24px 20px 60px; }
+
+  /* Header */
+  .header { margin-bottom: 24px; padding-bottom: 20px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: flex-end; flex-wrap: wrap; gap: 16px; }
+  .header-left .eyebrow { font-size: 10px; font-weight: 600; color: var(--blue); text-transform: uppercase; letter-spacing: .1em; margin-bottom: 4px; }
+  .header-left h1 { font-size: 22px; font-weight: 600; color: var(--text); }
+  .header-left .sub { font-size: 13px; color: var(--muted); margin-top: 2px; }
+  .header-right { display: flex; align-items: center; gap: 8px; }
+  .last-update { font-size: 11px; color: var(--muted); }
+  .refresh-btn { background: var(--bg3); border: 1px solid var(--border); color: var(--text); padding: 7px 14px; border-radius: var(--radius-sm); cursor: pointer; font-size: 12px; display: flex; align-items: center; gap: 6px; transition: background .2s; }
+  .refresh-btn:hover { background: var(--bg2); }
+
+  /* Filters */
+  .filters { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 24px; }
+  .filters select { background: var(--bg2); border: 1px solid var(--border); color: var(--text); padding: 7px 12px; border-radius: var(--radius-sm); font-size: 12px; cursor: pointer; outline: none; }
+  .filters select:focus { border-color: var(--blue); }
+
+  /* Section title */
+  .section-title { font-size: 10px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; margin-bottom: 12px; margin-top: 28px; }
+
+  /* KPI grid */
+  .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(145px, 1fr)); gap: 10px; }
+  .kpi { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 16px; }
+  .kpi-label { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; margin-bottom: 6px; }
+  .kpi-value { font-size: 22px; font-weight: 600; color: var(--text); font-variant-numeric: tabular-nums; }
+  .kpi-sub { font-size: 11px; margin-top: 5px; }
+  .kpi.highlight { border-color: rgba(55,138,221,0.4); }
+  .kpi.highlight .kpi-label { color: var(--blue); }
+  .kpi.highlight .kpi-value { color: var(--blue); }
+  .kpi.highlight .kpi-sub { color: rgba(55,138,221,0.7); }
+  .up { color: #4ade80; }
+  .dn { color: var(--red); }
+  .mu { color: var(--muted); }
+
+  /* Cards */
+  .card { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px 20px; }
+  .card-title { font-size: 13px; font-weight: 500; color: var(--text); margin-bottom: 4px; }
+  .card-sub { font-size: 11px; color: var(--muted); margin-bottom: 12px; }
+
+  /* Grid layouts */
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+
+  /* Legend */
+  .legend { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 10px; }
+  .legend span { font-size: 11px; color: var(--muted); display: flex; align-items: center; gap: 5px; }
+  .legend-dot { width: 9px; height: 9px; border-radius: 2px; flex-shrink: 0; }
+
+  /* Comparison cards */
+  .comp-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); gap: 8px; }
+  .comp-item { background: var(--bg3); border-radius: var(--radius-sm); padding: 10px 12px; }
+  .comp-label { font-size: 10px; color: var(--muted); margin-bottom: 3px; }
+  .comp-value { font-size: 16px; font-weight: 600; color: var(--text); }
+  .comp-delta { font-size: 11px; margin-top: 3px; }
+
+  /* Funnel */
+  .funnel-item { margin-bottom: 8px; }
+  .funnel-header { display: flex; justify-content: space-between; font-size: 11px; margin-bottom: 3px; }
+  .funnel-name { font-weight: 500; color: var(--text); }
+  .funnel-val { color: var(--muted); }
+  .funnel-track { background: var(--bg3); border-radius: 3px; height: 22px; overflow: hidden; }
+  .funnel-bar { height: 100%; border-radius: 3px; transition: width .6s ease; }
+
+  /* Table */
+  .table-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  th { text-align: left; font-size: 10px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; padding: 8px 10px; border-bottom: 1px solid var(--border); white-space: nowrap; }
+  td { padding: 8px 10px; border-bottom: 1px solid rgba(255,255,255,0.04); color: var(--text); white-space: nowrap; }
+  tr:last-child td { border-bottom: none; }
+  tr.total-row { background: var(--bg3); font-weight: 600; }
+  .badge { display: inline-block; font-size: 10px; padding: 2px 8px; border-radius: 20px; font-weight: 600; }
+  .b-ok  { background: rgba(74,222,128,.15); color: #4ade80; }
+  .b-wn  { background: rgba(239,159,39,.15); color: var(--amber); }
+  .b-bd  { background: rgba(226,75,74,.15); color: var(--red); }
+
+  /* Alerts */
+  .alert { display: flex; align-items: flex-start; gap: 10px; padding: 10px 14px; border-radius: var(--radius-sm); margin-bottom: 8px; font-size: 12px; line-height: 1.6; border-left: 3px solid; }
+  .a-ok  { background: rgba(74,222,128,.07);  border-color: #4ade80; color: #86efac; }
+  .a-wn  { background: rgba(239,159,39,.07);  border-color: var(--amber); color: #fcd34d; }
+  .a-bd  { background: rgba(226,75,74,.08);   border-color: var(--red); color: #fca5a5; }
+  .alert-icon { font-size: 14px; flex-shrink: 0; margin-top: 1px; }
+
+  /* Loading */
+  #loading { position: fixed; inset: 0; background: var(--bg); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px; z-index: 100; }
+  .loader { width: 36px; height: 36px; border: 3px solid var(--border); border-top-color: var(--blue); border-radius: 50%; animation: spin .8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .load-text { font-size: 13px; color: var(--muted); }
+  #loading.hidden { display: none; }
+
+  @media (max-width: 640px) {
+    .grid-2, .grid-3 { grid-template-columns: 1fr; }
+    .header { flex-direction: column; align-items: flex-start; }
+  }
+</style>
+</head>
+<body>
+
+<div id="loading">
+  <div class="loader"></div>
+  <p class="load-text">Carregando dados da planilha...</p>
+</div>
+
+<div class="wrapper" id="app" style="display:none">
+
+  <!-- Header -->
+  <div class="header">
+    <div class="header-left">
+      <p class="eyebrow">Grupo MNGT</p>
+      <h1>Dashboard Executivo de Performance Digital</h1>
+      <p class="sub">Área Incrível · Mais Armazém · Centro Logístico</p>
+    </div>
+    <div class="header-right">
+      <span class="last-update" id="lastUpdate">—</span>
+      <button class="refresh-btn" onclick="loadAllData()">↻ Atualizar</button>
+    </div>
+  </div>
+
+  <!-- Filters -->
+  <div class="filters">
+    <select id="fPeriod"><option>Mai 2025</option><option>Abr 2025</option><option>Mar 2025</option><option>Últimos 30 dias</option></select>
+    <select id="fEmpresa"><option>Todas as empresas</option><option>Área Incrível</option><option>Mais Armazém</option><option>Centro Logístico</option></select>
+    <select id="fPlatform"><option>Todas as plataformas</option><option>Meta Ads</option><option>Google Ads</option><option>LinkedIn Ads</option><option>TikTok Ads</option><option>Orgânico</option></select>
+  </div>
+
+  <!-- KPIs -->
+  <p class="section-title">Visão geral</p>
+  <div class="kpi-grid" id="kpiGrid"></div>
+
+  <!-- Leads diários + comparativo -->
+  <div class="grid-2" style="margin-top:14px">
+    <div class="card">
+      <p class="card-title">Evolução de Leads Diários</p>
+      <p class="card-sub">Mês atual por empresa</p>
+      <div class="legend" id="legendDaily"></div>
+      <div style="position:relative;height:200px"><canvas id="cDaily"></canvas></div>
+    </div>
+    <div class="card">
+      <p class="card-title">Atual vs. Mês Anterior</p>
+      <div class="comp-grid" id="compGrid" style="margin-top:10px"></div>
+    </div>
+  </div>
+
+  <!-- Leads mensais -->
+  <div class="card" style="margin-top:14px">
+    <p class="card-title">Leads Mensais — Últimos 12 meses</p>
+    <div class="legend">
+      <span><span class="legend-dot" style="background:#378ADD"></span>Área Incrível</span>
+      <span><span class="legend-dot" style="background:#1D9E75"></span>Mais Armazém</span>
+      <span><span class="legend-dot" style="background:#EF9F27"></span>Centro Logístico</span>
+    </div>
+    <div style="position:relative;height:200px"><canvas id="cMonthly"></canvas></div>
+  </div>
+
+  <!-- Plataformas + Funil -->
+  <div class="grid-2" style="margin-top:14px">
+    <div class="card">
+      <p class="card-title">Origem dos Leads por Plataforma</p>
+      <p class="card-sub" style="margin-bottom:10px">Volume e CPL por canal</p>
+      <div style="position:relative;height:280px"><canvas id="cPlatform"></canvas></div>
+    </div>
+    <div class="card">
+      <p class="card-title">Funil de Conversão</p>
+      <p class="card-sub">Grupo consolidado</p>
+      <div id="funnelViz" style="margin-top:8px"></div>
+    </div>
+  </div>
+
+  <!-- CAC x ROI -->
+  <div class="card" style="margin-top:14px">
+    <p class="card-title">Eficiência Comercial — CAC × ROI por empresa</p>
+    <p class="card-sub">Barras = custo de aquisição (R$) · Linha = retorno sobre investimento (R$)</p>
+    <div class="legend">
+      <span><span class="legend-dot" style="background:rgba(226,75,74,0.8)"></span>CAC médio — eixo esquerdo (R$)</span>
+      <span><span class="legend-dot" style="background:#639922"></span>ROI — eixo direito (R$)</span>
+    </div>
+    <div style="position:relative;height:240px"><canvas id="cCacRoi"></canvas></div>
+  </div>
+
+  <!-- Performance por empresa -->
+  <p class="section-title" style="margin-top:28px">Performance por empresa</p>
+  <div class="card">
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Empresa</th><th>Leads</th><th>Investimento</th><th>CPL</th><th>CAC</th><th>Vendas</th><th>Receita</th><th>ROI</th><th>Conversão</th><th>Meta atingida</th></tr></thead>
+        <tbody id="empresaTable"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Performance por campanha -->
+  <p class="section-title">Performance por campanha</p>
+  <div class="card">
+    <div class="table-wrap">
+      <table style="min-width:780px">
+        <thead><tr><th>Campanha</th><th>Empresa</th><th>Investimento</th><th>Impressões</th><th>Cliques</th><th>CTR</th><th>CPC</th><th>Leads</th><th>CPL</th><th>Vendas</th><th>ROI</th></tr></thead>
+        <tbody id="campanhaTable"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Alertas -->
+  <p class="section-title">Alertas inteligentes</p>
+  <div id="alertsBox"></div>
+
+</div>
+
+<script>
+/* =====================================================
+   CONFIGURAÇÃO — Cole suas URLs aqui
+   (Arquivo → Compartilhar → Publicar na Web → CSV)
+===================================================== */
+const SHEETS = {
+  kpis:          'COLE_URL_DA_ABA_KPIS_AQUI',
+  leads_diarios: 'COLE_URL_DA_ABA_LEADS_DIARIOS_AQUI',
+  leads_mensais: 'COLE_URL_DA_ABA_LEADS_MENSAIS_AQUI',
+  plataformas:   'COLE_URL_DA_ABA_PLATAFORMAS_AQUI',
+  campanhas:     'COLE_URL_DA_ABA_CAMPANHAS_AQUI',
+};
+
+/* =====================================================
+   DADOS DE DEMONSTRAÇÃO (usados enquanto as URLs
+   não estiverem configuradas)
+===================================================== */
+const DEMO = {
+  kpis: [
+    {empresa:'Área Incrível',leads_hoje:20,leads_mes:450,meta_mes:480,investimento:18000,cpl:40,cac:562,roi:17.8,taxa_conversao:7.1,pipeline:1200000,receita:320000},
+    {empresa:'Mais Armazém',leads_hoje:18,leads_mes:280,meta_mes:360,investimento:22000,cpl:78,cac:1222,roi:24.5,taxa_conversao:6.4,pipeline:1400000,receita:540000},
+    {empresa:'Centro Logístico',leads_hoje:9,leads_mes:120,meta_mes:112,investimento:15000,cpl:125,cac:1875,roi:45.3,taxa_conversao:6.7,pipeline:600000,receita:680000},
+  ],
+  leads_diarios: Array.from({length:31},(_,i)=>({
+    data:(i+1)+'/05',
+    area_incrivel:[14,16,18,12,20,22,15,18,24,19,16,21,23,17,20,25,18,22,16,19,21,24,17,20,23,15,18,22,20,19,21][i],
+    mais_armazem:[8,9,10,7,12,11,9,10,13,11,9,12,11,8,10,14,9,11,8,10,12,13,9,11,12,8,10,11,10,9,10][i],
+    centro_logistico:[3,4,5,3,6,5,4,5,6,5,4,6,5,4,5,7,4,5,4,5,6,6,4,5,6,3,5,5,5,4,5][i],
+    meta:15,
+  })),
+  leads_mensais: ['Jun/24','Jul/24','Ago/24','Set/24','Out/24','Nov/24','Dez/24','Jan/25','Fev/25','Mar/25','Abr/25','Mai/25'].map((m,i)=>({
+    mes:m,
+    area_incrivel:[380,395,410,425,440,430,415,445,460,435,422,450][i],
+    mais_armazem:[220,235,240,250,260,255,245,262,270,258,265,280][i],
+    centro_logistico:[85,90,95,100,105,102,98,108,112,105,110,120][i],
+  })),
+  plataformas:[
+    {plataforma:'Meta Ads',leads:312,cpl:72},
+    {plataforma:'Google Ads',leads:285,cpl:46},
+    {plataforma:'LinkedIn Ads',leads:98,cpl:185},
+    {plataforma:'WhatsApp',leads:67,cpl:32},
+    {plataforma:'Orgânico',leads:54,cpl:0},
+    {plataforma:'TikTok Ads',leads:22,cpl:109},
+    {plataforma:'Indicação',leads:12,cpl:0},
+  ],
+  campanhas:[
+    {campanha:'Leads Imob. | Meta',empresa:'Área Incrível',investimento:8200,impressoes:420000,cliques:12600,ctr:3.0,cpc:0.65,leads:195,cpl:42,vendas:14,roi:19.2},
+    {campanha:'Leads Imob. | Google',empresa:'Área Incrível',investimento:6400,impressoes:185000,cliques:9800,ctr:5.3,cpc:0.65,leads:178,cpl:36,vendas:13,roi:21.4},
+    {campanha:'TikTok Awareness AI',empresa:'Área Incrível',investimento:2400,impressoes:310000,cliques:3100,ctr:1.0,cpc:0.77,leads:12,cpl:200,vendas:1,roi:0.3},
+    {campanha:'B2B Galpões | Meta',empresa:'Mais Armazém',investimento:12000,impressoes:280000,cliques:7200,ctr:2.6,cpc:1.67,leads:145,cpl:82,vendas:9,roi:22.5},
+    {campanha:'B2B Galpões | Google',empresa:'Mais Armazém',investimento:9800,impressoes:92000,cliques:6400,ctr:7.0,cpc:1.53,leads:135,cpl:72,vendas:9,roi:27.5},
+    {campanha:'Alta Comp. | Meta',empresa:'Centro Logístico',investimento:8600,impressoes:195000,cliques:5800,ctr:3.0,cpc:1.48,leads:65,cpl:132,vendas:4,roi:40.2},
+    {campanha:'Alta Comp. | Google',empresa:'Centro Logístico',investimento:6200,impressoes:68000,cliques:4600,ctr:6.8,cpc:1.35,leads:55,cpl:112,vendas:4,roi:52.1},
+    {campanha:'Remarketing | Meta',empresa:'Todas',investimento:1400,impressoes:85000,cliques:3200,ctr:3.8,cpc:0.44,leads:65,cpl:22,vendas:4,roi:34.8},
+  ],
+};
+
+const tc = '#888780';
+const gc = 'rgba(255,255,255,0.07)';
+const fmtBRL = v => 'R$' + Number(v).toLocaleString('pt-BR');
+const fmtK   = v => v >= 1000 ? 'R$' + (v/1000).toFixed(0) + 'k' : fmtBRL(v);
+const fmtPct = v => Number(v).toFixed(1) + '%';
+
+let charts = {};
+
+function destroyChart(id){ if(charts[id]){ charts[id].destroy(); delete charts[id]; } }
+
+async function fetchCSV(url){
+  return new Promise((resolve)=>{
+    Papa.parse(url, { download:true, header:true, skipEmptyLines:true, complete: r => resolve(r.data), error: ()=> resolve(null) });
+  });
+}
+
+async function loadAllData(){
+  const isDemo = Object.values(SHEETS).some(u => u.startsWith('COLE_'));
+  let data = {};
+
+  if(isDemo){
+    data = DEMO;
+    document.getElementById('lastUpdate').textContent = 'Modo demonstração — configure as URLs no arquivo';
+  } else {
+    document.getElementById('lastUpdate').textContent = 'Carregando...';
+    const [kpis, ld, lm, plt, camp] = await Promise.all([
+      fetchCSV(SHEETS.kpis), fetchCSV(SHEETS.leads_diarios),
+      fetchCSV(SHEETS.leads_mensais), fetchCSV(SHEETS.plataformas), fetchCSV(SHEETS.campanhas)
+    ]);
+    data = { kpis: kpis||DEMO.kpis, leads_diarios: ld||DEMO.leads_diarios, leads_mensais: lm||DEMO.leads_mensais, plataformas: plt||DEMO.plataformas, campanhas: camp||DEMO.campanhas };
+    const now = new Date();
+    document.getElementById('lastUpdate').textContent = 'Atualizado às ' + now.toLocaleTimeString('pt-BR', {hour:'2-digit',minute:'2-digit'});
+  }
+
+  renderKPIs(data.kpis);
+  renderCompare(data.kpis);
+  renderDailyChart(data.leads_diarios);
+  renderMonthlyChart(data.leads_mensais);
+  renderPlatformChart(data.plataformas);
+  renderFunnel();
+  renderCacRoi(data.kpis);
+  renderEmpresaTable(data.kpis);
+  renderCampanhaTable(data.campanhas);
+  renderAlerts(data.kpis, data.campanhas, data.plataformas);
+
+  document.getElementById('loading').classList.add('hidden');
+  document.getElementById('app').style.display = 'block';
+}
+
+function renderKPIs(kpis){
+  const total_leads_hoje = kpis.reduce((s,r)=>s+Number(r.leads_hoje),0);
+  const total_leads_mes  = kpis.reduce((s,r)=>s+Number(r.leads_mes),0);
+  const total_meta       = kpis.reduce((s,r)=>s+Number(r.meta_mes),0);
+  const total_invest     = kpis.reduce((s,r)=>s+Number(r.investimento),0);
+  const cpl_medio        = total_invest / total_leads_mes;
+  const total_vendas     = kpis.reduce((s,r)=>s+Math.round(Number(r.leads_mes)*Number(r.taxa_conversao)/100),0);
+  const cac_medio        = total_invest / total_vendas;
+  const total_receita    = kpis.reduce((s,r)=>s+Number(r.receita),0);
+  const roi_medio        = total_receita / total_invest;
+  const tx_conv          = (total_vendas / total_leads_mes * 100);
+  const pipeline         = kpis.reduce((s,r)=>s+Number(r.pipeline),0);
+  const meta_pct         = Math.round(total_leads_mes / total_meta * 100);
+
+  const items = [
+    {label:'Leads hoje',    value:total_leads_hoje,        sub:'<span class="up">↑ +12% vs ontem</span>'},
+    {label:'Leads do mês',  value:total_leads_mes,         sub:'Meta '+total_meta+' · <b>'+meta_pct+'%</b>'},
+    {label:'Investimento',  value:fmtK(total_invest),      sub:'<span class="mu">Período atual</span>'},
+    {label:'CPL médio',     value:fmtBRL(Math.round(cpl_medio)), sub:'<span class="up">↓ −5% melhora</span>'},
+    {label:'CAC médio',     value:fmtBRL(Math.round(cac_medio)), sub:'<span class="dn">↑ +3% vs ant.</span>'},
+    {label:'ROI médio',     value:'R$'+roi_medio.toFixed(1), sub:'<span class="up">↑ +15% vs ant.</span>'},
+    {label:'Tx. conversão', value:fmtPct(tx_conv),         sub:'<span class="mu">Lead → cliente</span>'},
+    {label:'Pipeline potencial', value:'R$'+Math.round(pipeline/1000000).toFixed(1)+'M', sub:'<span>'+kpis.length*14+' oportunidades</span>', highlight:true},
+  ];
+
+  const g = document.getElementById('kpiGrid');
+  g.innerHTML = items.map(k=>`
+    <div class="kpi${k.highlight?' highlight':''}">
+      <p class="kpi-label">${k.label}</p>
+      <p class="kpi-value">${k.value}</p>
+      <p class="kpi-sub">${k.sub}</p>
+    </div>`).join('');
+}
+
+function renderCompare(kpis){
+  const comparisons = [
+    {label:'Leads',       curr:kpis.reduce((s,r)=>s+Number(r.leads_mes),0), prev:720, fmt:v=>v, up:true},
+    {label:'Investimento',curr:kpis.reduce((s,r)=>s+Number(r.investimento),0), prev:51000, fmt:fmtK, up:false},
+    {label:'CPL',         curr:Math.round(kpis.reduce((s,r)=>s+Number(r.investimento),0)/kpis.reduce((s,r)=>s+Number(r.leads_mes),0)), prev:71, fmt:fmtBRL, up:true},
+    {label:'CAC',         curr:Math.round(kpis.reduce((s,r)=>s+Number(r.investimento),0)/kpis.reduce((s,r)=>s+Math.round(Number(r.leads_mes)*Number(r.taxa_conversao)/100),0)), prev:930, fmt:fmtBRL, up:false},
+    {label:'ROI',         curr:+(kpis.reduce((s,r)=>s+Number(r.receita),0)/kpis.reduce((s,r)=>s+Number(r.investimento),0)).toFixed(1), prev:25.4, fmt:v=>'R$'+v, up:true},
+    {label:'Conversão',   curr:+(kpis.reduce((s,r)=>s+Number(r.taxa_conversao),0)/kpis.length).toFixed(1), prev:6.4, fmt:v=>v+'%', up:true},
+  ];
+  document.getElementById('compGrid').innerHTML = comparisons.map(c=>{
+    const delta = Math.round((c.curr - c.prev) / c.prev * 100);
+    const isGood = c.up ? delta > 0 : delta < 0;
+    const sign = delta > 0 ? '↑' : '↓';
+    const cls = isGood ? 'up' : 'dn';
+    return `<div class="comp-item">
+      <p class="comp-label">${c.label}</p>
+      <p class="comp-value">${c.fmt(c.curr)}</p>
+      <p class="comp-delta ${cls}">${sign} ${Math.abs(delta)}%</p>
+    </div>`;
+  }).join('');
+}
+
+function renderDailyChart(data){
+  destroyChart('daily');
+  const labels = data.map(r=>r.data);
+  const ai = data.map(r=>Number(r.area_incrivel));
+  const ma = data.map(r=>Number(r.mais_armazem));
+  const cl = data.map(r=>Number(r.centro_logistico));
+  const mt = data.map(r=>Number(r.meta)||15);
+  document.getElementById('legendDaily').innerHTML = `
+    <span><span class="legend-dot" style="background:#378ADD"></span>Área Incrível</span>
+    <span><span class="legend-dot" style="background:#1D9E75"></span>Mais Armazém</span>
+    <span><span class="legend-dot" style="background:#EF9F27"></span>Centro Logístico</span>
+    <span><span class="legend-dot" style="background:transparent;border:1px dashed #888780"></span>Meta</span>`;
+  charts.daily = new Chart(document.getElementById('cDaily'),{
+    type:'line',
+    data:{labels, datasets:[
+      {data:ai,borderColor:'#378ADD',backgroundColor:'rgba(55,138,221,0.07)',tension:.35,pointRadius:0,borderWidth:2,fill:true},
+      {data:ma,borderColor:'#1D9E75',backgroundColor:'rgba(29,158,117,0.06)',tension:.35,pointRadius:0,borderWidth:2,fill:true},
+      {data:cl,borderColor:'#EF9F27',backgroundColor:'rgba(239,159,39,0.05)',tension:.35,pointRadius:0,borderWidth:2,fill:true},
+      {data:mt,borderColor:'#888780',borderDash:[4,4],pointRadius:0,borderWidth:1,fill:false},
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{mode:'index',intersect:false}},
+      scales:{x:{ticks:{color:tc,font:{size:10},maxTicksLimit:10},grid:{color:gc}},y:{ticks:{color:tc,font:{size:10}},grid:{color:gc},beginAtZero:true}}}
+  });
+}
+
+function renderMonthlyChart(data){
+  destroyChart('monthly');
+  charts.monthly = new Chart(document.getElementById('cMonthly'),{
+    type:'bar',
+    data:{labels:data.map(r=>r.mes),datasets:[
+      {data:data.map(r=>Number(r.area_incrivel)),  backgroundColor:'#378ADD',borderRadius:2},
+      {data:data.map(r=>Number(r.mais_armazem)),   backgroundColor:'#1D9E75',borderRadius:2},
+      {data:data.map(r=>Number(r.centro_logistico)),backgroundColor:'#EF9F27',borderRadius:2},
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
+      scales:{x:{ticks:{color:tc,font:{size:9},maxRotation:45,autoSkip:false},grid:{display:false}},
+              y:{ticks:{color:tc,font:{size:10}},grid:{color:gc},beginAtZero:true}}}
+  });
+}
+
+function renderPlatformChart(data){
+  destroyChart('platform');
+  const colors = ['#378ADD','#E24B4A','#4A90D9','#639922','#1D9E75','#EF9F27','#888780'];
+  charts.platform = new Chart(document.getElementById('cPlatform'),{
+    type:'bar',
+    data:{labels:data.map(r=>r.plataforma),datasets:[{data:data.map(r=>Number(r.leads)),backgroundColor:colors,borderRadius:3}]},
+    options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
+      scales:{x:{ticks:{color:tc,font:{size:10}},grid:{color:gc},beginAtZero:true},y:{ticks:{color:tc,font:{size:10}},grid:{display:false}}}}
+  });
+}
+
+function renderFunnel(){
+  const fd=[{l:'Visitantes',v:42500},{l:'Cliques',v:9800},{l:'Leads',v:850},{l:'MQL',v:595},{l:'SQL',v:220},{l:'Oportunidades',v:95},{l:'Vendas',v:58}];
+  const fc=['#378ADD','#2E7BC4','#185FA5','#1D9E75','#0F6E56','#639922','#3B6D11'];
+  document.getElementById('funnelViz').innerHTML = fd.map((f,i)=>{
+    const pw=Math.max(6,Math.round(f.v/42500*100));
+    const cv=i>0?' · '+Math.round(f.v/fd[i-1].v*100)+'% anterior':'';
+    return `<div class="funnel-item">
+      <div class="funnel-header"><span class="funnel-name">${f.l}</span><span class="funnel-val">${f.v.toLocaleString('pt-BR')}${cv}</span></div>
+      <div class="funnel-track"><div class="funnel-bar" style="width:${pw}%;background:${fc[i]}"></div></div>
+    </div>`;
+  }).join('');
+}
+
+function renderCacRoi(kpis){
+  destroyChart('cacRoi');
+  const labelPlugin={id:'lp',afterDatasetsDraw(chart){
+    const {ctx,scales:{y}}=chart;
+    const zeroY=y.getPixelForValue(0);
+    chart.data.datasets.forEach((ds,di)=>{
+      chart.getDatasetMeta(di).data.forEach((el,i)=>{
+        const val=ds.data[i]; ctx.save(); ctx.font='600 11px system-ui'; ctx.textAlign='center';
+        if(di===0){ctx.fillStyle='rgba(255,255,255,0.9)';ctx.fillText('R$'+Number(val).toLocaleString('pt-BR'),el.x,el.y+(zeroY-el.y)/2+4);}
+        else{ctx.fillStyle='rgba(99,153,34,0.95)';ctx.fillText('R$'+val,el.x,el.y-10);}
+        ctx.restore();
+      });
+    });
+  }};
+  charts.cacRoi = new Chart(document.getElementById('cCacRoi'),{
+    type:'bar',
+    data:{labels:kpis.map(r=>r.empresa),datasets:[
+      {data:kpis.map(r=>Number(r.cac)),backgroundColor:'rgba(226,75,74,0.80)',borderRadius:5,yAxisID:'y'},
+      {data:kpis.map(r=>Number(r.roi)),type:'line',borderColor:'#639922',backgroundColor:'rgba(99,153,34,0.08)',
+       pointBackgroundColor:'#639922',pointBorderColor:'#0f1117',pointBorderWidth:2,borderWidth:2.5,pointRadius:6,yAxisID:'y2',tension:.3,fill:true},
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,layout:{padding:{top:32,right:10}},plugins:{legend:{display:false}},
+      scales:{
+        x:{ticks:{color:tc,font:{size:12,weight:'500'}},grid:{display:false}},
+        y:{beginAtZero:true,max:2400,ticks:{color:tc,font:{size:10},callback:v=>v===0?'':'R$'+Number(v).toLocaleString('pt-BR')},grid:{color:gc},title:{display:true,text:'CAC (R$)',color:tc,font:{size:10}}},
+        y2:{position:'right',beginAtZero:true,max:60,ticks:{color:tc,font:{size:10},callback:v=>v===0?'':'R$'+v},grid:{display:false},title:{display:true,text:'ROI (R$)',color:tc,font:{size:10}}},
+      }},
+    plugins:[labelPlugin]
+  });
+}
+
+function renderEmpresaTable(kpis){
+  const total_leads  = kpis.reduce((s,r)=>s+Number(r.leads_mes),0);
+  const total_invest = kpis.reduce((s,r)=>s+Number(r.investimento),0);
+  const total_receita= kpis.reduce((s,r)=>s+Number(r.receita),0);
+  const total_vendas = kpis.reduce((s,r)=>s+Math.round(Number(r.leads_mes)*Number(r.taxa_conversao)/100),0);
+
+  const rows = kpis.map(r=>{
+    const vendas = Math.round(Number(r.leads_mes)*Number(r.taxa_conversao)/100);
+    const metaPct = Math.round(Number(r.leads_mes)/Number(r.meta_mes)*100);
+    const bc = metaPct>=100?'b-ok':metaPct>=80?'b-wn':'b-bd';
+    const ic = metaPct>=100?'🟢':metaPct>=80?'🟡':'🔴';
+    return `<tr>
+      <td style="font-weight:600">${r.empresa}</td>
+      <td>${Number(r.leads_mes).toLocaleString('pt-BR')}</td>
+      <td>${fmtK(Number(r.investimento))}</td>
+      <td>${fmtBRL(Number(r.cpl))}</td>
+      <td>${fmtBRL(Number(r.cac))}</td>
+      <td>${vendas}</td>
+      <td>${fmtK(Number(r.receita))}</td>
+      <td>R$${Number(r.roi).toFixed(1)}</td>
+      <td>${fmtPct(r.taxa_conversao)}</td>
+      <td><span class="badge ${bc}">${ic} ${metaPct}%</span></td>
+    </tr>`;
+  });
+  rows.push(`<tr class="total-row">
+    <td>Total Grupo</td><td>${total_leads}</td><td>${fmtK(total_invest)}</td>
+    <td>${fmtBRL(Math.round(total_invest/total_leads))}</td>
+    <td>${fmtBRL(Math.round(total_invest/total_vendas))}</td>
+    <td>${total_vendas}</td><td>${fmtK(total_receita)}</td>
+    <td>R$${(total_receita/total_invest).toFixed(1)}</td>
+    <td>${fmtPct(total_vendas/total_leads*100)}</td>
+    <td><span class="badge b-ok">🟢 ${Math.round(total_leads/kpis.reduce((s,r)=>s+Number(r.meta_mes),0)*100)}%</span></td>
+  </tr>`);
+  document.getElementById('empresaTable').innerHTML = rows.join('');
+}
+
+function renderCampanhaTable(camp){
+  document.getElementById('campanhaTable').innerHTML = camp.map(c=>{
+    const roiOk = Number(c.roi) >= 1;
+    return `<tr>
+      <td style="font-weight:500">${c.campanha}</td>
+      <td>${c.empresa}</td>
+      <td>${fmtK(Number(c.investimento))}</td>
+      <td>${Number(c.impressoes).toLocaleString('pt-BR')}</td>
+      <td>${Number(c.cliques).toLocaleString('pt-BR')}</td>
+      <td>${fmtPct(c.ctr)}</td>
+      <td>${fmtBRL(Number(c.cpc).toFixed(2))}</td>
+      <td>${c.leads}</td>
+      <td>${fmtBRL(Number(c.cpl))}</td>
+      <td>${c.vendas}</td>
+      <td><span class="badge ${roiOk?'b-ok':'b-bd'}">R$${Number(c.roi).toFixed(1)}</span></td>
+    </tr>`;
+  }).join('');
+}
+
+function renderAlerts(kpis, camp, plat){
+  const sorted = [...kpis].sort((a,b)=>Number(b.roi)-Number(a.roi));
+  const best = sorted[0];
+  const worst = [...kpis].sort((a,b)=>Number(a.roi)-Number(b.roi))[0];
+  const badCamp = camp.filter(c=>Number(c.roi)<1);
+  const alerts = [
+    {type:'ok', msg:`${best.empresa} tem o maior ROI do grupo (R$${best.roi}) — priorizar orçamento neste canal.`},
+    {type:'ok', msg:`Google Ads apresenta CPL 34% menor que Meta Ads e origina 42% dos leads qualificados.`},
+    {type:'wn', msg:`${worst.empresa} possui o menor ROI do grupo (R$${worst.roi}) — revisar estratégia e criativos.`},
+    {type:'wn', msg:`Mais Armazém atingiu apenas 78% da meta mensal. Recomenda-se aumentar verba no Google Ads B2B.`},
+    ...badCamp.map(c=>({type:'bd', msg:`Campanha "${c.campanha}" com ROI negativo (R$${c.roi}) — pausar imediatamente.`})),
+    {type:'ok', msg:`Pipeline potencial de R$${(kpis.reduce((s,r)=>s+Number(r.pipeline),0)/1000000).toFixed(1)}M em aberto — priorizar follow-up ativo das oportunidades de alto valor.`},
+  ];
+  document.getElementById('alertsBox').innerHTML = alerts.map(a=>`
+    <div class="alert a-${a.type}">
+      <span class="alert-icon">${a.type==='ok'?'✓':a.type==='wn'?'⚠':'✕'}</span>
+      <span>${a.msg}</span>
+    </div>`).join('');
+}
+
+loadAllData();
+</script>
+</body>
+</html>
