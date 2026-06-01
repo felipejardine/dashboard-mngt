@@ -2,7 +2,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Dashboard Executivo — Grupo MNGT</title>
+<title>Dashboard — Grupo MNGT</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
 <style>
@@ -84,7 +84,7 @@ tr:hover td{background:#F9FAFB}
   <div class="hrow">
     <div>
       <p class="ey">Grupo MNGT</p>
-      <h1 class="h1">Dashboard Executivo de Performance Digital</h1>
+      <h1 class="h1">Dashboard de Performance Digital</h1>
       <p class="hs" id="subTitle">Área Incrível · Mais Armazém · Centro Logístico</p>
     </div>
     <div style="display:flex;align-items:center;gap:8px">
@@ -187,11 +187,11 @@ tr:hover td{background:#F9FAFB}
    Arquivo → Compartilhar → Publicar na Web → CSV
 ===================================================== */
 const SHEETS = {
-  kpis:          'COLE_URL_DA_ABA_KPIS_AQUI',
-  leads_diarios: 'COLE_URL_DA_ABA_LEADS_DIARIOS_AQUI',
-  leads_mensais: 'COLE_URL_DA_ABA_LEADS_MENSAIS_AQUI',
-  plataformas:   'COLE_URL_DA_ABA_PLATAFORMAS_AQUI',
-  campanhas:     'COLE_URL_DA_ABA_CAMPANHAS_AQUI',
+  kpis:          'https://docs.google.com/spreadsheets/d/e/2PACX-1vTXgU1soXgto3xIiMY0cC4sMunrW-FRfS06hrFAjfM82LsD8BCs3QCYAjnaLNBvo50A6qTsd7txgzpj/pub?gid=1166282157&single=true&output=csv',
+  leads_diarios: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTXgU1soXgto3xIiMY0cC4sMunrW-FRfS06hrFAjfM82LsD8BCs3QCYAjnaLNBvo50A6qTsd7txgzpj/pub?gid=11334140&single=true&output=csv',
+  leads_mensais: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTXgU1soXgto3xIiMY0cC4sMunrW-FRfS06hrFAjfM82LsD8BCs3QCYAjnaLNBvo50A6qTsd7txgzpj/pub?gid=1514319272&single=true&output=csv',
+  plataformas:   'https://docs.google.com/spreadsheets/d/e/2PACX-1vTXgU1soXgto3xIiMY0cC4sMunrW-FRfS06hrFAjfM82LsD8BCs3QCYAjnaLNBvo50A6qTsd7txgzpj/pub?gid=1762653540&single=true&output=csv',
+  campanhas:     'https://docs.google.com/spreadsheets/d/e/2PACX-1vTXgU1soXgto3xIiMY0cC4sMunrW-FRfS06hrFAjfM82LsD8BCs3QCYAjnaLNBvo50A6qTsd7txgzpj/pub?gid=1273319349&single=true&output=csv',
 };
 
 const tc='#9CA3AF',gc='rgba(0,0,0,0.05)';
