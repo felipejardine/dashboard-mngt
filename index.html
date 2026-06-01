@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Dashboard de Marketing</title>
+<title>Dashboard Executivo — Grupo MNGT</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
 <style>
@@ -85,7 +85,7 @@ tr:hover td{background:#F9FAFB}
   <div class="hrow">
     <div>
       <p class="ey">Grupo MNGT</p>
-      <h1 class="h1">Dashboard Performance</h1>
+      <h1 class="h1">Dashboard Executivo de Performance Digital</h1>
       <p class="hs" id="subTitle">Área Incrível · Mais Armazém · Centro Logístico</p>
     </div>
     <div style="display:flex;align-items:center;gap:8px">
@@ -295,7 +295,79 @@ async function loadAllData(){
     try{
       const [k,ld,lm,plt,camp]=await Promise.all([fetchCSV(SHEETS.kpis),fetchCSV(SHEETS.leads_diarios),fetchCSV(SHEETS.leads_mensais),fetchCSV(SHEETS.plataformas),fetchCSV(SHEETS.campanhas)]);
       if(k) mergeKpis(k);
-      if(camp) DB.campanhas=camp.map(r=>({campanha:r.campanha,empresa:r.empresa,plataforma:r.plataforma,investimento:r.investimento,impressoes:r.impressoes,cliques:r.cliques,ctr:r.ctr,leads:Number(r.leads),cpl:r.cpl,vendas:Number(r.vendas),roi:Number(r.roi)}));
+
+      // Leads diários — ignora linhas sem data válida
+      if(ld){
+        const s=getState();
+        const empresas=['Área Incrível','Mais Armazém','Centro Logístico'];
+        const validDays=ld.filter(r=>{
+          const d=r['Data']||r['data']||'';
+          return /^\d{2}\/\d{2}$/.test(d.trim());
+        });
+        if(validDays.length>0){
+          DB.leads_diarios[s.period]={
+            'Área Incrível': validDays.map(r=>Number(r['Área Incrível']||r['area_incrivel'])||0),
+            'Mais Armazém':  validDays.map(r=>Number(r['Mais Armazém']||r['mais_armazem'])||0),
+            'Centro Logístico': validDays.map(r=>Number(r['Centro Logístico']||r['centro_logistico'])||0),
+            meta: Number(validDays[0]['Meta Diária']||validDays[0]['meta'])||15,
+          };
+        }
+      }
+
+      // Leads mensais — ignora linhas sem mês válido
+      if(lm){
+        const validMonths=lm.filter(r=>{
+          const m=r['Mês']||r['mes']||'';
+          return m.trim().length>0 && !m.includes('Leads') && !m.includes('linha');
+        });
+        if(validMonths.length>0){
+          DB.leads_mensais.labels=validMonths.map(r=>(r['Mês']||r['mes']||'').trim());
+          DB.leads_mensais['Área Incrível']=validMonths.map(r=>Number(r['Área Incrível']||r['area_incrivel'])||0);
+          DB.leads_mensais['Mais Armazém']=validMonths.map(r=>Number(r['Mais Armazém']||r['mais_armazem'])||0);
+          DB.leads_mensais['Centro Logístico']=validMonths.map(r=>Number(r['Centro Logístico']||r['centro_logistico'])||0);
+        }
+      }
+
+      // Plataformas — ignora linhas sem nome válido
+      if(plt){
+        const validPlat=plt.filter(r=>{
+          const p=r['Plataforma']||r['plataforma']||'';
+          return p.trim().length>0 && !p.includes('Plataforma') && !p.includes('linha');
+        });
+        if(validPlat.length>0){
+          const s=getState();
+          const platKey=s.empresa==='Todas as empresas'?'Todas as empresas':s.empresa;
+          DB.plataformas[platKey]=validPlat.map(r=>({
+            p:   (r['Plataforma']||r['plataforma']||'').trim(),
+            leads:Number(r['Leads']||r['leads'])||0,
+            cor: '#2563EB',
+          }));
+        }
+      }
+
+      // Campanhas — ignora linhas sem nome válido
+      if(camp){
+        const validCamp=camp.filter(r=>{
+          const c=r['Campanha']||r['campanha']||'';
+          return c.trim().length>0 && !c.includes('Campanha') && !c.includes('linha');
+        });
+        if(validCamp.length>0){
+          DB.campanhas=validCamp.map(r=>({
+            campanha:    (r['Campanha']||r['campanha']||'').trim(),
+            empresa:     (r['Empresa']||r['empresa']||'').trim(),
+            plataforma:  (r['Plataforma']||r['plataforma']||'').trim(),
+            investimento:(r['Investimento']||r['investimento']||'R$0').trim(),
+            impressoes:  (r['Impressões']||r['impressoes']||'—').trim(),
+            cliques:     (r['Cliques']||r['cliques']||'—').trim(),
+            ctr:         (r['CTR']||r['ctr']||'—').trim(),
+            leads:       Number(r['Leads']||r['leads'])||0,
+            cpl:         (r['CPL (R$)']||r['cpl']||'—').trim(),
+            vendas:      Number(r['Vendas']||r['vendas'])||0,
+            roi:         Number(r['ROI']||r['roi'])||0,
+          }));
+        }
+      }
+
       const now=new Date();
       document.getElementById('lastUpdate').textContent='Atualizado às '+now.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
     }catch(e){document.getElementById('lastUpdate').textContent='Erro ao carregar dados';}
@@ -307,7 +379,26 @@ async function loadAllData(){
 
 function mergeKpis(rows){
   const period=document.getElementById('fPeriod').value;
-  DB.kpis[period]=rows.map(r=>({empresa:r.empresa,leads_hoje:Number(r.leads_hoje)||0,leads_mes:Number(r.leads_mes)||0,meta_mes:Number(r.meta_mes)||0,investimento:Number(r.investimento)||0,cpl:Number(r.cpl)||0,cac:Number(r.cac)||0,roi:Number(r.roi)||0,taxa:Number(r.taxa_conversao)||0,pipeline:Number(r.pipeline)||0,receita:Number(r.receita)||0}));
+  // Filtra apenas linhas com nome de empresa válido (ignora títulos, notas e totais)
+  const empresasValidas=['Área Incrível','Mais Armazém','Centro Logístico'];
+  const validRows=rows.filter(r=>{
+    const nome=r['Empresa']||r['empresa']||'';
+    return empresasValidas.includes(nome.trim());
+  });
+  DB.kpis[period]=validRows.map(r=>({
+    empresa:     (r['Empresa']||r['empresa']||'').trim(),
+    leads_hoje:  Number(r['Leads Hoje']||r['leads_hoje'])||0,
+    leads_mes:   Number(r['Leads Mês']||r['leads_mes'])||0,
+    meta_mes:    Number(r['Meta Mês']||r['meta_mes'])||0,
+    investimento:Number(r['Investimento (R$)']||r['investimento'])||0,
+    cpl:         Number(r['CPL (R$)']||r['cpl'])||0,
+    cac:         Number(r['CAC (R$)']||r['cac'])||0,
+    roi:         Number(r['ROI']||r['roi'])||0,
+    taxa:        Number(r['Taxa Conv. (%)']||r['taxa_conversao'])||0,
+    pipeline:    Number(r['Pipeline (R$)']||r['pipeline'])||0,
+    receita:     Number(r['Receita (R$)']||r['receita'])||0,
+  }));
+  if(DB.kpis[period].length===0) DB.kpis[period]=DEMO.kpis[period]||DEMO.kpis['Jun 2026'];
 }
 
 function onEmpresaChange(){
