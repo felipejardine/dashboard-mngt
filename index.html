@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Dashboard de Perfomance</title>
+<title>Dashboard — Grupo MNGT</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
 <style>
@@ -279,9 +279,22 @@ function fmtK(v){return v>=1000000?'R$'+(v/1000000).toFixed(1)+'M':v>=1000?'R$'+
 function destroyChart(id){if(charts[id]){charts[id].destroy();delete charts[id];}}
 function getState(){return{period:document.getElementById('fPeriod').value,empresa:document.getElementById('fEmpresa').value,plat:document.getElementById('fPlat').value,camp:document.getElementById('fCamp').value}}
 
-async function fetchCSV(url){
+async function fetchCSV(url,headerKeyword){
   return new Promise(resolve=>{
-    Papa.parse(url,{download:true,header:true,skipEmptyLines:true,complete:r=>resolve(r.data),error:()=>resolve(null)});
+    Papa.parse(url,{
+      download:true,header:true,skipEmptyLines:true,
+      beforeFirstChunk:function(chunk){
+        if(!headerKeyword) return chunk;
+        const lines=chunk.split('\n');
+        let startIdx=0;
+        for(let i=0;i<lines.length;i++){
+          const firstCell=lines[i].split(',')[0].replace(/"/g,'').trim();
+          if(firstCell===headerKeyword){startIdx=i;break;}
+        }
+        return lines.slice(startIdx).join('\n');
+      },
+      complete:r=>resolve(r.data),error:()=>resolve(null)
+    });
   });
 }
 
@@ -293,7 +306,7 @@ async function loadAllData(){
   } else {
     document.getElementById('lastUpdate').textContent='Carregando...';
     try{
-      const [k,ld,lm,plt,camp]=await Promise.all([fetchCSV(SHEETS.kpis),fetchCSV(SHEETS.leads_diarios),fetchCSV(SHEETS.leads_mensais),fetchCSV(SHEETS.plataformas),fetchCSV(SHEETS.campanhas)]);
+      const [k,ld,lm,plt,camp]=await Promise.all([fetchCSV(SHEETS.kpis,'Empresa'),fetchCSV(SHEETS.leads_diarios,'Data'),fetchCSV(SHEETS.leads_mensais,'Mês'),fetchCSV(SHEETS.plataformas,'Plataforma'),fetchCSV(SHEETS.campanhas,'Campanha')]);
       if(k) mergeKpis(k);
 
       // Leads diários — ignora linhas sem data válida
