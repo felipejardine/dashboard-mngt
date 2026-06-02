@@ -188,23 +188,19 @@ tr:hover td{background:#F9FAFB}
 </div>
 
 <script>
-/* =====================================================
-   CONFIGURAÇÃO — Cole suas URLs do Google Sheets aqui
-   Arquivo → Compartilhar → Publicar na Web → CSV
-===================================================== */
 const SHEETS = {
   kpis:          'https://docs.google.com/spreadsheets/d/e/2PACX-1vTXgU1soXgto3xIiMY0cC4sMunrW-FRfS06hrFAjfM82LsD8BCs3QCYAjnaLNBvo50A6qTsd7txgzpj/pub?gid=1166282157&single=true&output=csv',
   leads_diarios: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTXgU1soXgto3xIiMY0cC4sMunrW-FRfS06hrFAjfM82LsD8BCs3QCYAjnaLNBvo50A6qTsd7txgzpj/pub?gid=11334140&single=true&output=csv',
   leads_mensais: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTXgU1soXgto3xIiMY0cC4sMunrW-FRfS06hrFAjfM82LsD8BCs3QCYAjnaLNBvo50A6qTsd7txgzpj/pub?gid=1514319272&single=true&output=csv',
   plataformas:   'https://docs.google.com/spreadsheets/d/e/2PACX-1vTXgU1soXgto3xIiMY0cC4sMunrW-FRfS06hrFAjfM82LsD8BCs3QCYAjnaLNBvo50A6qTsd7txgzpj/pub?gid=1762653540&single=true&output=csv',
   campanhas:     'https://docs.google.com/spreadsheets/d/e/2PACX-1vTXgU1soXgto3xIiMY0cC4sMunrW-FRfS06hrFAjfM82LsD8BCs3QCYAjnaLNBvo50A6qTsd7txgzpj/pub?gid=1273319349&single=true&output=csv',
+  funil:         'https://docs.google.com/spreadsheets/d/e/2PACX-1vTXgU1soXgto3xIiMY0cC4sMunrW-FRfS06hrFAjfM82LsD8BCs3QCYAjnaLNBvo50A6qTsd7txgzpj/pub?gid=1816261762&single=true&output=csv',
 };
 
 const tc='#9CA3AF',gc='rgba(0,0,0,0.05)';
 const COLORS={'Área Incrível':'#2563EB','Mais Armazém':'#059669','Centro Logístico':'#D97706'};
 const MQL_RATE=0.70,SQL_RATE=0.26;
 
-/* ── DADOS DEMO (usados enquanto SHEETS não estiver configurado) ── */
 const DEMO={
   kpis:{
     'Jun 2026':[
@@ -268,7 +264,8 @@ const DEMO={
     {campanha:'WhatsApp Ativo',empresa:'Mais Armazém',plataforma:'WhatsApp',investimento:'R$800',impressoes:'—',cliques:'—',ctr:'—',leads:67,cpl:'R$12',vendas:5,roi:31.2},
     {campanha:'Alta Comp. | Meta',empresa:'Centro Logístico',plataforma:'Meta Ads',investimento:'R$8.600',impressoes:'195k',cliques:'5.800',ctr:'3,0%',leads:65,cpl:'R$132',vendas:4,roi:40.2},
     {campanha:'Alta Comp. | Google',empresa:'Centro Logístico',plataforma:'Google Ads',investimento:'R$6.200',impressoes:'68k',cliques:'4.600',ctr:'6,8%',leads:55,cpl:'R$112',vendas:4,roi:52.1},
-  ]
+  ],
+  funil:{}
 };
 
 let DB=JSON.parse(JSON.stringify(DEMO));
@@ -287,7 +284,6 @@ async function fetchCSV(url,skipRows,skipNoteRow){
         if(!skipRows) return chunk;
         const lines=chunk.split(/\r?\n/);
         const sliced=lines.slice(skipRows);
-        // Remove a linha de notas logo após o cabeçalho
         if(skipNoteRow && sliced.length>1) sliced.splice(1,1);
         return sliced.join('\n');
       },
@@ -297,91 +293,98 @@ async function fetchCSV(url,skipRows,skipNoteRow){
 }
 
 async function loadAllData(){
-  const isDemo=Object.values(SHEETS).some(u=>u.startsWith('COLE_'));
-  if(isDemo){
-    DB=JSON.parse(JSON.stringify(DEMO));
-    document.getElementById('lastUpdate').textContent='Modo demonstração';
-  } else {
-    document.getElementById('lastUpdate').textContent='Carregando...';
-    try{
-      const [k,ld,lm,plt,camp]=await Promise.all([fetchCSV(SHEETS.kpis,2,true),fetchCSV(SHEETS.leads_diarios,0,false),fetchCSV(SHEETS.leads_mensais,2,true),fetchCSV(SHEETS.plataformas,2,true),fetchCSV(SHEETS.campanhas,2,true)]);
-      if(k) mergeKpis(k);
+  document.getElementById('lastUpdate').textContent='Carregando...';
+  try{
+    const [k,ld,lm,plt,camp,fun]=await Promise.all([
+      fetchCSV(SHEETS.kpis,2,true),
+      fetchCSV(SHEETS.leads_diarios,0,false),
+      fetchCSV(SHEETS.leads_mensais,2,true),
+      fetchCSV(SHEETS.plataformas,2,true),
+      fetchCSV(SHEETS.campanhas,2,true),
+      fetchCSV(SHEETS.funil,2,true)
+    ]);
 
-      // Leads diários — ignora linhas sem data válida
-      if(ld){
+    if(k) mergeKpis(k);
+
+    if(ld){
+      const s=getState();
+      const validDays=ld.filter(r=>/^\d{2}\/\d{2}$/.test((r['Data']||r['data']||'').trim()));
+      if(validDays.length>0){
+        DB.leads_diarios[s.period]={
+          'Área Incrível': validDays.map(r=>Number(r['Área Incrível']||r['area_incrivel'])||0),
+          'Mais Armazém':  validDays.map(r=>Number(r['Mais Armazém']||r['mais_armazem'])||0),
+          'Centro Logístico': validDays.map(r=>Number(r['Centro Logístico']||r['centro_logistico'])||0),
+          meta: Number(validDays[0]['Meta Diária']||validDays[0]['meta'])||15,
+        };
+      }
+    }
+
+    if(lm){
+      const validMonths=lm.filter(r=>{const m=r['Mês']||r['mes']||'';return m.trim().length>0&&!m.includes('Leads')&&!m.includes('linha');});
+      if(validMonths.length>0){
+        DB.leads_mensais.labels=validMonths.map(r=>(r['Mês']||r['mes']||'').trim());
+        DB.leads_mensais['Área Incrível']=validMonths.map(r=>Number(r['Área Incrível']||r['area_incrivel'])||0);
+        DB.leads_mensais['Mais Armazém']=validMonths.map(r=>Number(r['Mais Armazém']||r['mais_armazem'])||0);
+        DB.leads_mensais['Centro Logístico']=validMonths.map(r=>Number(r['Centro Logístico']||r['centro_logistico'])||0);
+      }
+    }
+
+    if(plt){
+      const validPlat=plt.filter(r=>{const p=r['Plataforma']||r['plataforma']||'';return p.trim().length>0&&!p.includes('Plataforma')&&!p.includes('linha');});
+      if(validPlat.length>0){
         const s=getState();
-        const empresas=['Área Incrível','Mais Armazém','Centro Logístico'];
-        const validDays=ld.filter(r=>{
-          const d=r['Data']||r['data']||'';
-          return /^\d{2}\/\d{2}$/.test(d.trim());
-        });
-        if(validDays.length>0){
-          DB.leads_diarios[s.period]={
-            'Área Incrível': validDays.map(r=>Number(r['Área Incrível']||r['area_incrivel'])||0),
-            'Mais Armazém':  validDays.map(r=>Number(r['Mais Armazém']||r['mais_armazem'])||0),
-            'Centro Logístico': validDays.map(r=>Number(r['Centro Logístico']||r['centro_logistico'])||0),
-            meta: Number(validDays[0]['Meta Diária']||validDays[0]['meta'])||15,
-          };
-        }
+        DB.plataformas['Todas as empresas']=validPlat.map(r=>({p:(r['Plataforma']||r['plataforma']||'').trim(),leads:Number(r['Leads']||r['leads'])||0,cor:'#2563EB'}));
       }
+    }
 
-      // Leads mensais — ignora linhas sem mês válido
-      if(lm){
-        const validMonths=lm.filter(r=>{
-          const m=r['Mês']||r['mes']||'';
-          return m.trim().length>0 && !m.includes('Leads') && !m.includes('linha');
-        });
-        if(validMonths.length>0){
-          DB.leads_mensais.labels=validMonths.map(r=>(r['Mês']||r['mes']||'').trim());
-          DB.leads_mensais['Área Incrível']=validMonths.map(r=>Number(r['Área Incrível']||r['area_incrivel'])||0);
-          DB.leads_mensais['Mais Armazém']=validMonths.map(r=>Number(r['Mais Armazém']||r['mais_armazem'])||0);
-          DB.leads_mensais['Centro Logístico']=validMonths.map(r=>Number(r['Centro Logístico']||r['centro_logistico'])||0);
-        }
+    if(camp){
+      const validCamp=camp.filter(r=>{const c=r['Campanha']||r['campanha']||'';return c.trim().length>0&&!c.includes('Campanha')&&!c.includes('linha');});
+      if(validCamp.length>0){
+        DB.campanhas=validCamp.map(r=>({
+          campanha:(r['Campanha']||r['campanha']||'').trim(),
+          empresa:(r['Empresa']||r['empresa']||'').trim(),
+          plataforma:(r['Plataforma']||r['plataforma']||'').trim(),
+          investimento:(r['Investimento']||r['investimento']||'R$0').trim(),
+          impressoes:(r['Impressões']||r['impressoes']||'—').trim(),
+          cliques:(r['Cliques']||r['cliques']||'—').trim(),
+          ctr:(r['CTR']||r['ctr']||'—').trim(),
+          leads:Number(r['Leads']||r['leads'])||0,
+          cpl:(r['CPL (R$)']||r['cpl']||'—').trim(),
+          vendas:Number(r['Vendas']||r['vendas'])||0,
+          roi:Number(r['ROI']||r['roi'])||0,
+        }));
       }
+    }
 
-      // Plataformas — ignora linhas sem nome válido
-      if(plt){
-        const validPlat=plt.filter(r=>{
-          const p=r['Plataforma']||r['plataforma']||'';
-          return p.trim().length>0 && !p.includes('Plataforma') && !p.includes('linha');
+    // Funil — lê dados reais da aba Funil
+    if(fun){
+      const mesMap={'Jun 2026':'Jun/26','Mai 2026':'Mai/26','Abr 2026':'Abr/26','Mar 2026':'Mar/26','Fev 2026':'Fev/26','Jan 2026':'Jan/26'};
+      const empresasValidas=['Área Incrível','Mais Armazém','Centro Logístico'];
+      const validFunil=fun.filter(r=>empresasValidas.includes((r['Empresa']||'').trim()));
+      if(validFunil.length>0){
+        const periods=['Jun 2026','Mai 2026','Abr 2026','Mar 2026','Fev 2026','Jan 2026'];
+        periods.forEach(period=>{
+          const mesCsv=mesMap[period];
+          const rows=validFunil.filter(r=>(r['Mês']||'').trim()===mesCsv);
+          if(rows.length>0){
+            DB.funil[period]=rows.map(r=>({
+              empresa:(r['Empresa']||'').trim(),
+              mql:Number(r['MQL'])||0,
+              sql:Number(r['SQL'])||0,
+              oportunidades:Number(r['Oportunidades'])||0,
+              negociacoes:Number(r['Negociações']||r['Negociacoes'])||0,
+              vendas:Number(r['Vendas'])||0,
+              receita:Number(r['Receita (R$)']||r['Receita'])||0,
+            }));
+          }
         });
-        if(validPlat.length>0){
-          const s=getState();
-          const platKey=s.empresa==='Todas as empresas'?'Todas as empresas':s.empresa;
-          DB.plataformas[platKey]=validPlat.map(r=>({
-            p:   (r['Plataforma']||r['plataforma']||'').trim(),
-            leads:Number(r['Leads']||r['leads'])||0,
-            cor: '#2563EB',
-          }));
-        }
       }
+    }
 
-      // Campanhas — ignora linhas sem nome válido
-      if(camp){
-        const validCamp=camp.filter(r=>{
-          const c=r['Campanha']||r['campanha']||'';
-          return c.trim().length>0 && !c.includes('Campanha') && !c.includes('linha');
-        });
-        if(validCamp.length>0){
-          DB.campanhas=validCamp.map(r=>({
-            campanha:    (r['Campanha']||r['campanha']||'').trim(),
-            empresa:     (r['Empresa']||r['empresa']||'').trim(),
-            plataforma:  (r['Plataforma']||r['plataforma']||'').trim(),
-            investimento:(r['Investimento']||r['investimento']||'R$0').trim(),
-            impressoes:  (r['Impressões']||r['impressoes']||'—').trim(),
-            cliques:     (r['Cliques']||r['cliques']||'—').trim(),
-            ctr:         (r['CTR']||r['ctr']||'—').trim(),
-            leads:       Number(r['Leads']||r['leads'])||0,
-            cpl:         (r['CPL (R$)']||r['cpl']||'—').trim(),
-            vendas:      Number(r['Vendas']||r['vendas'])||0,
-            roi:         Number(r['ROI']||r['roi'])||0,
-          }));
-        }
-      }
-
-      const now=new Date();
-      document.getElementById('lastUpdate').textContent='Atualizado às '+now.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
-    }catch(e){document.getElementById('lastUpdate').textContent='Erro ao carregar dados';}
+    const now=new Date();
+    document.getElementById('lastUpdate').textContent='Atualizado às '+now.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+  }catch(e){
+    document.getElementById('lastUpdate').textContent='Erro ao carregar dados';
   }
   document.getElementById('loading').classList.add('hidden');
   document.getElementById('app').style.display='block';
@@ -390,40 +393,27 @@ async function loadAllData(){
 
 function mergeKpis(rows){
   const empresasValidas=['Área Incrível','Mais Armazém','Centro Logístico'];
-
-  // Mapeamento entre período do filtro e valor da coluna Mês na planilha
-  const mesMap={
-    'Jun 2026':'Jun/26','Mai 2026':'Mai/26','Abr 2026':'Abr/26',
-    'Mar 2026':'Mar/26','Fev 2026':'Fev/26','Jan 2026':'Jan/26'
-  };
-
-  // Filtra só linhas de empresas válidas
+  const mesMap={'Jun 2026':'Jun/26','Mai 2026':'Mai/26','Abr 2026':'Abr/26','Mar 2026':'Mar/26','Fev 2026':'Fev/26','Jan 2026':'Jan/26'};
   const allRows=rows.filter(r=>empresasValidas.includes((r['Empresa']||r['empresa']||'').trim()));
-
-  // Agrupa por mês e popula DB.kpis para todos os períodos disponíveis
   const periods=['Jun 2026','Mai 2026','Abr 2026','Mar 2026','Fev 2026','Jan 2026'];
   periods.forEach(period=>{
     const mesCsv=mesMap[period];
-    const rowsDoMes=allRows.filter(r=>{
-      const mes=(r['Mês']||r['mes']||'').trim();
-      return mes===mesCsv;
-    });
+    const rowsDoMes=allRows.filter(r=>(r['Mês']||r['mes']||'').trim()===mesCsv);
     if(rowsDoMes.length>0){
       DB.kpis[period]=rowsDoMes.map(r=>({
-        empresa:     (r['Empresa']||r['empresa']||'').trim(),
-        leads_hoje:  Number(r['Leads Hoje']||r['leads_hoje'])||0,
-        leads_mes:   Number(r['Leads Mês']||r['leads_mes'])||0,
-        meta_mes:    Number(r['Meta Mês']||r['meta_mes'])||0,
+        empresa:(r['Empresa']||r['empresa']||'').trim(),
+        leads_hoje:Number(r['Leads Hoje']||r['leads_hoje'])||0,
+        leads_mes:Number(r['Leads Mês']||r['leads_mes'])||0,
+        meta_mes:Number(r['Meta Mês']||r['meta_mes'])||0,
         investimento:Number(r['Investimento (R$)']||r['investimento'])||0,
-        cpl:         Number(r['CPL (R$)']||r['cpl'])||0,
-        cac:         Number(r['CAC (R$)']||r['cac'])||0,
-        roi:         Number(r['ROI']||r['roi'])||0,
-        taxa:        Number(r['Taxa Conv. (%)']||r['taxa_conversao'])||0,
-        pipeline:    Number(r['Pipeline (R$)']||r['pipeline'])||0,
-        receita:     Number(r['Receita (R$)']||r['receita'])||0,
+        cpl:Number(r['CPL (R$)']||r['cpl'])||0,
+        cac:Number(r['CAC (R$)']||r['cac'])||0,
+        roi:Number(r['ROI']||r['roi'])||0,
+        taxa:Number(r['Taxa Conv. (%)']||r['taxa_conversao'])||0,
+        pipeline:Number(r['Pipeline (R$)']||r['pipeline'])||0,
+        receita:Number(r['Receita (R$)']||r['receita'])||0,
       }));
     }
-    // Se não encontrou dados reais, mantém os dados demo
   });
 }
 
@@ -439,18 +429,25 @@ function onEmpresaChange(){
 
 function applyFilters(){
   const s=getState();
-  const kpis=(DB.kpis[s.period]||DB.kpis['Mai 2026']).filter(r=>s.empresa==='Todas as empresas'||r.empresa===s.empresa);
+  const kpis=(DB.kpis[s.period]||DB.kpis['Jun 2026']).filter(r=>s.empresa==='Todas as empresas'||r.empresa===s.empresa);
   const platKey=DB.plataformas[s.empresa]?s.empresa:'Todas as empresas';
   const platData=DB.plataformas[platKey].filter(r=>s.plat==='Todas as plataformas'||r.p===s.plat);
   const campData=DB.campanhas.filter(c=>(s.empresa==='Todas as empresas'||c.empresa===s.empresa)&&(s.plat==='Todas as plataformas'||c.plataforma===s.plat)&&(s.camp==='Todas as campanhas'||c.campanha===s.camp));
   document.getElementById('subTitle').textContent=s.empresa==='Todas as empresas'?'Área Incrível · Mais Armazém · Centro Logístico':s.empresa;
   document.getElementById('periodLabel').textContent=s.period;
-  renderKPIs(kpis);renderCompare(kpis,s);renderDaily(s);renderMonthly(s);
-  renderPlatform(platData);renderFunnel(kpis);renderCacRoi(kpis);
+  renderKPIs(kpis,s);renderCompare(kpis,s);renderDaily(s);renderMonthly(s);
+  renderPlatform(platData);renderFunnel(kpis,s);renderCacRoi(kpis);
   renderEmpresaTable(kpis,s);renderCampTable(campData);renderAlerts(kpis,campData);
 }
 
-function renderKPIs(kpis){
+function getFunilData(s){
+  if(DB.funil&&DB.funil[s.period]){
+    return DB.funil[s.period].filter(r=>s.empresa==='Todas as empresas'||r.empresa===s.empresa);
+  }
+  return null;
+}
+
+function renderKPIs(kpis,s){
   const tl=kpis.reduce((a,r)=>a+Number(r.leads_hoje),0);
   const lm=kpis.reduce((a,r)=>a+Number(r.leads_mes),0);
   const meta=kpis.reduce((a,r)=>a+Number(r.meta_mes),0);
@@ -463,13 +460,27 @@ function renderKPIs(kpis){
   const tx=lm>0?vd/lm*100:0;
   const pip=kpis.reduce((a,r)=>a+Number(r.pipeline),0);
   const mp=meta>0?Math.round(lm/meta*100):0;
-  const mql=Math.round(lm*MQL_RATE);
-  const sql=Math.round(lm*SQL_RATE);
+
+  // MQL e SQL: usa dados reais do funil se disponíveis
+  let mql,sql,mqlPct,sqlPct;
+  const funRows=getFunilData(s);
+  if(funRows&&funRows.length>0){
+    mql=funRows.reduce((a,r)=>a+r.mql,0);
+    sql=funRows.reduce((a,r)=>a+r.sql,0);
+    mqlPct=lm>0?Math.round(mql/lm*100):0;
+    sqlPct=mql>0?Math.round(sql/mql*100):0;
+  } else {
+    mql=Math.round(lm*MQL_RATE);
+    sql=Math.round(lm*SQL_RATE);
+    mqlPct=Math.round(MQL_RATE*100);
+    sqlPct=Math.round(SQL_RATE/MQL_RATE*100);
+  }
+
   document.getElementById('kpiGrid').innerHTML=[
     {l:'Leads hoje',v:tl,s:'<span class="up">↑ +12% vs ontem</span>',cl:''},
     {l:'Leads do mês',v:lm,s:`Meta ${meta} · <b style="color:#111827">${mp}%</b>`,cl:''},
-    {l:'MQL',v:mql,s:`<span style="color:#8B5CF6">${Math.round(MQL_RATE*100)}% dos leads</span>`,cl:'mql'},
-    {l:'SQL',v:sql,s:`<span style="color:#10B981">${Math.round(SQL_RATE/MQL_RATE*100)}% dos MQL</span>`,cl:'sql'},
+    {l:'MQL',v:mql,s:`<span style="color:#8B5CF6">${mqlPct}% dos leads</span>`,cl:'mql'},
+    {l:'SQL',v:sql,s:`<span style="color:#10B981">${sqlPct}% dos MQL</span>`,cl:'sql'},
     {l:'Investimento',v:fmtK(inv),s:'<span class="mu">Período atual</span>',cl:''},
     {l:'CPL médio',v:fmtBRL(cpl),s:'<span class="up">↓ −5% melhora</span>',cl:''},
     {l:'CAC médio',v:fmtBRL(cac),s:'<span class="dn">↑ +3% vs ant.</span>',cl:''},
@@ -480,19 +491,24 @@ function renderKPIs(kpis){
 }
 
 function renderCompare(kpis,s){
-  const prevMap = {
-    'Jun 2026':'Mai 2026','Mai 2026':'Abr 2026','Abr 2026':'Mar 2026',
-    'Mar 2026':'Fev 2026','Fev 2026':'Jan 2026','Jan 2026':'Jan 2026'
-  };
-  const prevPeriod = prevMap[s.period] || 'Mai 2026';
-  const prev=DB.kpis[prevPeriod]||DB.kpis['Mai 2026'];
-  const pf=prev.filter(r=>s.empresa==='Todas as empresas'||r.empresa===s.empresa);
+  const prevMap={'Jun 2026':'Mai 2026','Mai 2026':'Abr 2026','Abr 2026':'Mar 2026','Mar 2026':'Fev 2026','Fev 2026':'Jan 2026','Jan 2026':'Jan 2026'};
+  const prevPeriod=prevMap[s.period]||'Mai 2026';
+  const prev=(DB.kpis[prevPeriod]||DB.kpis['Jun 2026']).filter(r=>s.empresa==='Todas as empresas'||r.empresa===s.empresa);
   const calc=arr=>({lm:arr.reduce((a,r)=>a+Number(r.leads_mes),0),inv:arr.reduce((a,r)=>a+Number(r.investimento),0),rec:arr.reduce((a,r)=>a+Number(r.receita),0),vd:arr.reduce((a,r)=>a+Math.round(Number(r.leads_mes)*Number(r.taxa)/100),0)});
-  const c=calc(kpis),p=calc(pf);
+  const c=calc(kpis),p=calc(prev);
+
+  // MQL/SQL reais se disponíveis
+  const funCurr=getFunilData(s);
+  const funPrevRows=DB.funil&&DB.funil[prevPeriod]?DB.funil[prevPeriod].filter(r=>s.empresa==='Todas as empresas'||r.empresa===s.empresa):null;
+  const mqlCurr=funCurr?funCurr.reduce((a,r)=>a+r.mql,0):Math.round(c.lm*MQL_RATE);
+  const mqlPrev=funPrevRows?funPrevRows.reduce((a,r)=>a+r.mql,0):Math.round(p.lm*MQL_RATE);
+  const sqlCurr=funCurr?funCurr.reduce((a,r)=>a+r.sql,0):Math.round(c.lm*SQL_RATE);
+  const sqlPrev=funPrevRows?funPrevRows.reduce((a,r)=>a+r.sql,0):Math.round(p.lm*SQL_RATE);
+
   const items=[
     {l:'Leads',curr:c.lm,prev:p.lm,fmt:v=>v,up:true},
-    {l:'MQL',curr:Math.round(c.lm*MQL_RATE),prev:Math.round(p.lm*MQL_RATE),fmt:v=>v,up:true},
-    {l:'SQL',curr:Math.round(c.lm*SQL_RATE),prev:Math.round(p.lm*SQL_RATE),fmt:v=>v,up:true},
+    {l:'MQL',curr:mqlCurr,prev:mqlPrev,fmt:v=>v,up:true},
+    {l:'SQL',curr:sqlCurr,prev:sqlPrev,fmt:v=>v,up:true},
     {l:'Investimento',curr:c.inv,prev:p.inv,fmt:fmtK,up:false},
     {l:'CPL',curr:c.lm>0?c.inv/c.lm:0,prev:p.lm>0?p.inv/p.lm:0,fmt:fmtBRL,up:true},
     {l:'ROI',curr:c.inv>0?c.rec/c.inv:0,prev:p.inv>0?p.rec/p.inv:0,fmt:v=>'R$'+v.toFixed(1),up:true},
@@ -502,7 +518,7 @@ function renderCompare(kpis,s){
 
 function renderDaily(s){
   destroyChart('daily');
-  const dd=DB.leads_diarios[s.period]||DB.leads_diarios['Mai 2026'];
+  const dd=DB.leads_diarios[s.period]||DB.leads_diarios['Jun 2026'];
   const empresas=s.empresa==='Todas as empresas'?['Área Incrível','Mais Armazém','Centro Logístico']:[s.empresa];
   document.getElementById('lgDaily').innerHTML=empresas.map(e=>`<span><span class="ld" style="background:${COLORS[e]}"></span>${e}</span>`).join('')+`<span><span class="ld" style="background:transparent;border:1px dashed #D1D5DB"></span>Meta</span>`;
   charts.daily=new Chart(document.getElementById('c1'),{type:'line',data:{labels:Array.from({length:31},(_,i)=>i+1),datasets:[...empresas.map(e=>({label:e,data:dd[e]||[],borderColor:COLORS[e],backgroundColor:COLORS[e]+'12',tension:.35,pointRadius:0,borderWidth:2,fill:true})),{label:'Meta',data:new Array(31).fill(dd.meta||15),borderColor:'#D1D5DB',borderDash:[4,4],pointRadius:0,borderWidth:1,fill:false}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{mode:'index',intersect:false}},scales:{x:{ticks:{color:tc,font:{size:10},maxTicksLimit:10},grid:{color:gc}},y:{ticks:{color:tc,font:{size:10}},grid:{color:gc},beginAtZero:true}}}});
@@ -522,13 +538,42 @@ function renderPlatform(data){
   charts.plat=new Chart(document.getElementById('c3'),{type:'bar',data:{labels:data.map(r=>r.p),datasets:[{data:data.map(r=>r.leads),backgroundColor:data.map(r=>r.cor),borderRadius:3}]},options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:tc,font:{size:10}},grid:{color:gc},beginAtZero:true},y:{ticks:{color:tc,font:{size:10}},grid:{display:false}}}}});
 }
 
-function renderFunnel(kpis){
+function renderFunnel(kpis,s){
   const lm=kpis.reduce((a,r)=>a+Number(r.leads_mes),0);
   const vd=kpis.reduce((a,r)=>a+Math.round(Number(r.leads_mes)*Number(r.taxa)/100),0);
-  const mql=Math.round(lm*MQL_RATE),sql=Math.round(lm*SQL_RATE);
-  const fd=[{l:'Visitantes',v:Math.round(lm/0.02)},{l:'Cliques',v:Math.round(lm/0.087)},{l:'Leads',v:lm},{l:'MQL',v:mql},{l:'SQL',v:sql},{l:'Oportunidades',v:Math.round(lm*.11)},{l:'Vendas',v:vd}];
-  const fc=['#2563EB','#3B82F6','#60A5FA','#7C3AED','#059669','#D97706','#F59E0B'];
-  document.getElementById('funnel').innerHTML=fd.map((f,i)=>{const pw=Math.max(5,Math.round(f.v/fd[0].v*100));const cv=i>0?' · '+Math.round(f.v/fd[i-1].v*100)+'% ant.':'';return`<div class="fi"><div class="fh"><span class="fn">${f.l}</span><span class="fv">${f.v.toLocaleString('pt-BR')}${cv}</span></div><div class="ft"><div class="fb" style="width:${pw}%;background:${fc[i]}"></div></div></div>`;}).join('');
+
+  let mql,sql,opor,neg,vendas;
+  const funRows=getFunilData(s);
+  if(funRows&&funRows.length>0){
+    mql=funRows.reduce((a,r)=>a+r.mql,0);
+    sql=funRows.reduce((a,r)=>a+r.sql,0);
+    opor=funRows.reduce((a,r)=>a+r.oportunidades,0);
+    neg=funRows.reduce((a,r)=>a+r.negociacoes,0);
+    vendas=funRows.reduce((a,r)=>a+r.vendas,0)||vd;
+  } else {
+    mql=Math.round(lm*MQL_RATE);
+    sql=Math.round(lm*SQL_RATE);
+    opor=Math.round(lm*.11);
+    neg=Math.round(lm*.06);
+    vendas=vd;
+  }
+
+  const fd=[
+    {l:'Visitantes',v:Math.round(lm/0.02)},
+    {l:'Cliques',v:Math.round(lm/0.087)},
+    {l:'Leads',v:lm},
+    {l:'MQL',v:mql},
+    {l:'SQL',v:sql},
+    {l:'Oportunidades',v:opor},
+    {l:'Negociações',v:neg},
+    {l:'Vendas',v:vendas}
+  ];
+  const fc=['#2563EB','#3B82F6','#60A5FA','#7C3AED','#059669','#0891B2','#D97706','#F59E0B'];
+  document.getElementById('funnel').innerHTML=fd.map((f,i)=>{
+    const pw=Math.max(5,Math.round(f.v/Math.max(fd[0].v,1)*100));
+    const cv=i>0&&fd[i-1].v>0?' · '+Math.round(f.v/fd[i-1].v*100)+'% ant.':'';
+    return`<div class="fi"><div class="fh"><span class="fn">${f.l}</span><span class="fv">${f.v.toLocaleString('pt-BR')}${cv}</span></div><div class="ft"><div class="fb" style="width:${pw}%;background:${fc[i]}"></div></div></div>`;
+  }).join('');
 }
 
 function renderCacRoi(kpis){
@@ -542,11 +587,13 @@ function renderCacRoi(kpis){
 
 function renderEmpresaTable(kpis,s){
   if(!kpis.length){document.getElementById('empresaTb').innerHTML=`<tr><td colspan="12" class="empty">Nenhum dado para os filtros selecionados.</td></tr>`;return;}
+  const funRows=getFunilData(s);
   const rows=kpis.map(r=>{
     const vd=Math.round(Number(r.leads_mes)*Number(r.taxa)/100);
-    const mql=Math.round(Number(r.leads_mes)*MQL_RATE);
-    const sql=Math.round(Number(r.leads_mes)*SQL_RATE);
-    const mp=Math.round(Number(r.leads_mes)/Number(r.meta_mes)*100);
+    const funR=funRows?funRows.find(f=>f.empresa===r.empresa):null;
+    const mql=funR?funR.mql:Math.round(Number(r.leads_mes)*MQL_RATE);
+    const sql=funR?funR.sql:Math.round(Number(r.leads_mes)*SQL_RATE);
+    const mp=r.meta_mes>0?Math.round(Number(r.leads_mes)/Number(r.meta_mes)*100):0;
     const bc=mp>=100?'bok':mp>=80?'bwn':'bbd';
     const ic=mp>=100?'🟢':mp>=80?'🟡':'🔴';
     return`<tr><td style="font-weight:600">${r.empresa}</td><td>${Number(r.leads_mes).toLocaleString('pt-BR')}</td><td style="color:#6D28D9;font-weight:600">${mql}</td><td style="color:#047857;font-weight:600">${sql}</td><td>${fmtK(r.investimento)}</td><td>${fmtBRL(r.cpl)}</td><td>${fmtBRL(r.cac)}</td><td>${vd}</td><td>${fmtK(r.receita)}</td><td>R$${Number(r.roi).toFixed(1)}</td><td>${Number(r.taxa).toFixed(1)}%</td><td><span class="bk ${bc}">${ic} ${mp}%</span></td></tr>`;
@@ -557,8 +604,10 @@ function renderEmpresaTable(kpis,s){
     const tr2=kpis.reduce((a,r)=>a+Number(r.receita),0);
     const tv=kpis.reduce((a,r)=>a+Math.round(Number(r.leads_mes)*Number(r.taxa)/100),0);
     const tm=kpis.reduce((a,r)=>a+Number(r.meta_mes),0);
-    const mp=Math.round(tl/tm*100);
-    rows.push(`<tr style="background:#F9FAFB;font-weight:600"><td>Total Grupo</td><td>${tl}</td><td style="color:#6D28D9">${Math.round(tl*MQL_RATE)}</td><td style="color:#047857">${Math.round(tl*SQL_RATE)}</td><td>${fmtK(ti)}</td><td>${fmtBRL(ti/tl)}</td><td>${fmtBRL(ti/tv)}</td><td>${tv}</td><td>${fmtK(tr2)}</td><td>R$${(tr2/ti).toFixed(1)}</td><td>${(tv/tl*100).toFixed(1)}%</td><td><span class="bk bok">🟢 ${mp}%</span></td></tr>`);
+    const mp=tm>0?Math.round(tl/tm*100):0;
+    const tmql=funRows?funRows.reduce((a,r)=>a+r.mql,0):Math.round(tl*MQL_RATE);
+    const tsql=funRows?funRows.reduce((a,r)=>a+r.sql,0):Math.round(tl*SQL_RATE);
+    rows.push(`<tr style="background:#F9FAFB;font-weight:600"><td>Total Grupo</td><td>${tl}</td><td style="color:#6D28D9">${tmql}</td><td style="color:#047857">${tsql}</td><td>${fmtK(ti)}</td><td>${fmtBRL(ti/tl)}</td><td>${fmtBRL(ti/tv)}</td><td>${tv}</td><td>${fmtK(tr2)}</td><td>R$${(tr2/ti).toFixed(1)}</td><td>${(tv/tl*100).toFixed(1)}%</td><td><span class="bk bok">🟢 ${mp}%</span></td></tr>`);
   }
   document.getElementById('empresaTb').innerHTML=rows.join('');
 }
