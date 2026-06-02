@@ -30,8 +30,7 @@ body{font-family:-apple-system,'Segoe UI',sans-serif;background:#F4F6FB;color:#1
 .up{color:#059669}.dn{color:#DC2626}.mu{color:#9CA3AF}
 .kc.hi{border-color:#BFDBFE;background:#EFF6FF}
 .kc.hi .kl{color:#185FA5}.kc.hi .kv{color:#1D4ED8}.kc.hi .ks{color:#60A5FA}
-.kc.mql{border-color:#DDD6FE;background:#F5F3FF}
-.kc.mql .kl{color:#7C3AED}.kc.mql .kv{color:#6D28D9}.kc.mql .ks{color:#8B5CF6}
+
 .kc.sql{border-color:#BBF7D0;background:#F0FDF4}
 .kc.sql .kl{color:#059669}.kc.sql .kv{color:#047857}.kc.sql .ks{color:#10B981}
 .cc{background:#fff;border-radius:10px;border:1px solid #E5E7ED;padding:14px 16px;margin-bottom:10px}
@@ -172,7 +171,7 @@ tr:hover td{background:#F9FAFB}
   <div class="dv"></div>
   <p class="st">Performance por empresa</p>
   <div class="cc"><div class="tw"><table>
-    <thead><tr><th>Empresa</th><th>Leads</th><th>MQL</th><th>SQL</th><th>Investimento</th><th>CPL</th><th>CAC</th><th>Vendas</th><th>Receita</th><th>ROI</th><th>Conversão</th><th>Meta</th></tr></thead>
+    <thead><tr><th>Empresa</th><th>Leads</th><th>SQL</th><th>Investimento</th><th>CPL</th><th>CAC</th><th>Vendas</th><th>Receita</th><th>ROI</th><th>Conversão</th><th>Meta</th></tr></thead>
     <tbody id="empresaTb"></tbody>
   </table></div></div>
 
@@ -504,8 +503,7 @@ function renderKPIs(kpis,s){
   document.getElementById('kpiGrid').innerHTML=[
     {l:'Leads hoje',v:tl,s:'<span class="up">↑ +12% vs ontem</span>',cl:''},
     {l:'Leads do mês',v:lm,s:`Meta ${meta} · <b style="color:#111827">${mp}%</b>`,cl:''},
-    {l:'MQL',v:mql,s:`<span style="color:#8B5CF6">${mqlPct}% dos leads</span>`,cl:'mql'},
-    {l:'SQL',v:sql,s:`<span style="color:#10B981">${sqlPct}% dos MQL</span>`,cl:'sql'},
+    {l:'SQL',v:sql,s:`<span style="color:#10B981">${sqlPct}% dos leads</span>`,cl:'sql'},
     {l:'Investimento',v:fmtK(inv),s:'<span class="mu">Período atual</span>',cl:''},
     {l:'CPL médio',v:fmtBRL(cpl),s:'<span class="up">↓ −5% melhora</span>',cl:''},
     {l:'CAC médio',v:fmtBRL(cac),s:'<span class="dn">↑ +3% vs ant.</span>',cl:''},
@@ -532,7 +530,6 @@ function renderCompare(kpis,s){
 
   const items=[
     {l:'Leads',curr:c.lm,prev:p.lm,fmt:v=>v,up:true},
-    {l:'MQL',curr:mqlCurr,prev:mqlPrev,fmt:v=>v,up:true},
     {l:'SQL',curr:sqlCurr,prev:sqlPrev,fmt:v=>v,up:true},
     {l:'Investimento',curr:c.inv,prev:p.inv,fmt:fmtK,up:false},
     {l:'CPL',curr:c.lm>0?c.inv/c.lm:0,prev:p.lm>0?p.inv/p.lm:0,fmt:fmtBRL,up:true},
@@ -609,7 +606,7 @@ function renderCacRoi(kpis){
 }
 
 function renderEmpresaTable(kpis,s){
-  if(!kpis.length){document.getElementById('empresaTb').innerHTML=`<tr><td colspan="12" class="empty">Nenhum dado para os filtros selecionados.</td></tr>`;return;}
+  if(!kpis.length){document.getElementById('empresaTb').innerHTML=`<tr><td colspan="11" class="empty">Nenhum dado para os filtros selecionados.</td></tr>`;return;}
   const funRows=getFunilData(s);
   const rows=kpis.map(r=>{
     const vd=Math.round(Number(r.leads_mes)*Number(r.taxa)/100);
@@ -619,7 +616,7 @@ function renderEmpresaTable(kpis,s){
     const mp=r.meta_mes>0?Math.round(Number(r.leads_mes)/Number(r.meta_mes)*100):0;
     const bc=mp>=100?'bok':mp>=80?'bwn':'bbd';
     const ic=mp>=100?'🟢':mp>=80?'🟡':'🔴';
-    return`<tr><td style="font-weight:600">${r.empresa}</td><td>${Number(r.leads_mes).toLocaleString('pt-BR')}</td><td style="color:#6D28D9;font-weight:600">${mql}</td><td style="color:#047857;font-weight:600">${sql}</td><td>${fmtK(r.investimento)}</td><td>${fmtBRL(r.cpl)}</td><td>${fmtBRL(r.cac)}</td><td>${vd}</td><td>${fmtK(r.receita)}</td><td>R$${Number(r.roi).toFixed(1)}</td><td>${Number(r.taxa).toFixed(1)}%</td><td><span class="bk ${bc}">${ic} ${mp}%</span></td></tr>`;
+    return`<tr><td style="font-weight:600">${r.empresa}</td><td>${Number(r.leads_mes).toLocaleString('pt-BR')}</td><td style="color:#047857;font-weight:600">${sql}</td><td>${fmtK(r.investimento)}</td><td>${fmtBRL(r.cpl)}</td><td>${fmtBRL(r.cac)}</td><td>${vd}</td><td>${fmtK(r.receita)}</td><td>R$${Number(r.roi).toFixed(1)}</td><td>${Number(r.taxa).toFixed(1)}%</td><td><span class="bk ${bc}">${ic} ${mp}%</span></td></tr>`;
   });
   if(kpis.length>1){
     const tl=kpis.reduce((a,r)=>a+Number(r.leads_mes),0);
@@ -630,7 +627,7 @@ function renderEmpresaTable(kpis,s){
     const mp=tm>0?Math.round(tl/tm*100):0;
     const tmql=funRows?funRows.reduce((a,r)=>a+r.mql,0):Math.round(tl*MQL_RATE);
     const tsql=funRows?funRows.reduce((a,r)=>a+r.sql,0):Math.round(tl*SQL_RATE);
-    rows.push(`<tr style="background:#F9FAFB;font-weight:600"><td>Total Grupo</td><td>${tl}</td><td style="color:#6D28D9">${tmql}</td><td style="color:#047857">${tsql}</td><td>${fmtK(ti)}</td><td>${fmtBRL(ti/tl)}</td><td>${fmtBRL(ti/tv)}</td><td>${tv}</td><td>${fmtK(tr2)}</td><td>R$${(tr2/ti).toFixed(1)}</td><td>${(tv/tl*100).toFixed(1)}%</td><td><span class="bk bok">🟢 ${mp}%</span></td></tr>`);
+    rows.push(`<tr style="background:#F9FAFB;font-weight:600"><td>Total Grupo</td><td>${tl}</td><td style="color:#047857">${tsql}</td><td>${fmtK(ti)}</td><td>${fmtBRL(ti/tl)}</td><td>${fmtBRL(ti/tv)}</td><td>${tv}</td><td>${fmtK(tr2)}</td><td>R$${(tr2/ti).toFixed(1)}</td><td>${(tv/tl*100).toFixed(1)}%</td><td><span class="bk bok">🟢 ${mp}%</span></td></tr>`);
   }
   document.getElementById('empresaTb').innerHTML=rows.join('');
 }
