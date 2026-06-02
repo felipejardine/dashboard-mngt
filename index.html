@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Dashboard — Grupo MNGT</title>
+<title>Dashboard de Marketing</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
 <style>
@@ -306,8 +306,15 @@ async function loadAllData(){
   } else {
     document.getElementById('lastUpdate').textContent='Carregando...';
     try{
-      const [k,ld,lm,plt,camp]=await Promise.all([fetchCSV(SHEETS.kpis,'Empresa'),fetchCSV(SHEETS.leads_diarios,'Data'),fetchCSV(SHEETS.leads_mensais,'Mês'),fetchCSV(SHEETS.plataformas,'Plataforma'),fetchCSV(SHEETS.campanhas,'Campanha')]);
-      if(k) mergeKpis(k);
+      const [k,ld,lm,plt,camp]=await Promise.all([fetchCSV(SHEETS.kpis,'Mês'),fetchCSV(SHEETS.leads_diarios,'Data'),fetchCSV(SHEETS.leads_mensais,'Mês'),fetchCSV(SHEETS.plataformas,'Plataforma'),fetchCSV(SHEETS.campanhas,'Campanha')]);
+      // Carrega KPIs para TODOS os períodos disponíveis
+      if(k){
+        const periods=['Jun 2026','Mai 2026','Abr 2026','Mar 2026','Fev 2026','Jan 2026'];
+        const empresasValidas=['Área Incrível','Mais Armazém','Centro Logístico'];
+        const allRows=k.filter(r=>empresasValidas.includes((r['Empresa']||r['empresa']||'').trim()));
+        // O CSV só tem um mês — aplica para o período selecionado e mantém demo para os outros
+        mergeKpis(k);
+      }
 
       // Leads diários — ignora linhas sem data válida
       if(ld){
@@ -391,27 +398,42 @@ async function loadAllData(){
 }
 
 function mergeKpis(rows){
-  const period=document.getElementById('fPeriod').value;
-  // Filtra apenas linhas com nome de empresa válido (ignora títulos, notas e totais)
   const empresasValidas=['Área Incrível','Mais Armazém','Centro Logístico'];
-  const validRows=rows.filter(r=>{
-    const nome=r['Empresa']||r['empresa']||'';
-    return empresasValidas.includes(nome.trim());
+
+  // Mapeamento entre período do filtro e valor da coluna Mês na planilha
+  const mesMap={
+    'Jun 2026':'Jun/26','Mai 2026':'Mai/26','Abr 2026':'Abr/26',
+    'Mar 2026':'Mar/26','Fev 2026':'Fev/26','Jan 2026':'Jan/26'
+  };
+
+  // Filtra só linhas de empresas válidas
+  const allRows=rows.filter(r=>empresasValidas.includes((r['Empresa']||r['empresa']||'').trim()));
+
+  // Agrupa por mês e popula DB.kpis para todos os períodos disponíveis
+  const periods=['Jun 2026','Mai 2026','Abr 2026','Mar 2026','Fev 2026','Jan 2026'];
+  periods.forEach(period=>{
+    const mesCsv=mesMap[period];
+    const rowsDoMes=allRows.filter(r=>{
+      const mes=(r['Mês']||r['mes']||'').trim();
+      return mes===mesCsv;
+    });
+    if(rowsDoMes.length>0){
+      DB.kpis[period]=rowsDoMes.map(r=>({
+        empresa:     (r['Empresa']||r['empresa']||'').trim(),
+        leads_hoje:  Number(r['Leads Hoje']||r['leads_hoje'])||0,
+        leads_mes:   Number(r['Leads Mês']||r['leads_mes'])||0,
+        meta_mes:    Number(r['Meta Mês']||r['meta_mes'])||0,
+        investimento:Number(r['Investimento (R$)']||r['investimento'])||0,
+        cpl:         Number(r['CPL (R$)']||r['cpl'])||0,
+        cac:         Number(r['CAC (R$)']||r['cac'])||0,
+        roi:         Number(r['ROI']||r['roi'])||0,
+        taxa:        Number(r['Taxa Conv. (%)']||r['taxa_conversao'])||0,
+        pipeline:    Number(r['Pipeline (R$)']||r['pipeline'])||0,
+        receita:     Number(r['Receita (R$)']||r['receita'])||0,
+      }));
+    }
+    // Se não encontrou dados reais, mantém os dados demo
   });
-  DB.kpis[period]=validRows.map(r=>({
-    empresa:     (r['Empresa']||r['empresa']||'').trim(),
-    leads_hoje:  Number(r['Leads Hoje']||r['leads_hoje'])||0,
-    leads_mes:   Number(r['Leads Mês']||r['leads_mes'])||0,
-    meta_mes:    Number(r['Meta Mês']||r['meta_mes'])||0,
-    investimento:Number(r['Investimento (R$)']||r['investimento'])||0,
-    cpl:         Number(r['CPL (R$)']||r['cpl'])||0,
-    cac:         Number(r['CAC (R$)']||r['cac'])||0,
-    roi:         Number(r['ROI']||r['roi'])||0,
-    taxa:        Number(r['Taxa Conv. (%)']||r['taxa_conversao'])||0,
-    pipeline:    Number(r['Pipeline (R$)']||r['pipeline'])||0,
-    receita:     Number(r['Receita (R$)']||r['receita'])||0,
-  }));
-  if(DB.kpis[period].length===0) DB.kpis[period]=DEMO.kpis[period]||DEMO.kpis['Jun 2026'];
 }
 
 function onEmpresaChange(){
