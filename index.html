@@ -320,10 +320,16 @@ async function loadAllData(){
     }
 
     if(plt){
-      const validPlat=plt.filter(r=>{const p=r['Plataforma']||r['plataforma']||'';return p.trim().length>0&&!p.includes('Plataforma')&&!p.includes('linha');});
+      const validPlat=plt.filter(r=>{
+        const p=r['Plataforma']||r['plataforma']||'';
+        return p.trim().length>0&&!p.includes('Plataforma')&&!p.includes('linha');
+      });
       if(validPlat.length>0){
-        const s=getState();
-        DB.plataformas['Todas as empresas']=validPlat.map(r=>({p:(r['Plataforma']||r['plataforma']||'').trim(),leads:Number(r['Leads']||r['leads'])||0,cor:'#2563EB'}));
+        DB.plataformasAll=validPlat.map(r=>({
+          mes:(r['Mês']||r['mes']||'').trim(),
+          p:(r['Plataforma']||r['plataforma']||'').trim(),
+          leads:Number(r['Leads']||r['leads'])||0,
+        }));
       }
     }
 
@@ -424,8 +430,17 @@ function onEmpresaChange(){
 function applyFilters(){
   const s=getState();
   const kpis=(DB.kpis[s.period]||DB.kpis['Jun 2026']).filter(r=>s.empresa==='Todas as empresas'||r.empresa===s.empresa);
-  const platKey=DB.plataformas[s.empresa]?s.empresa:'Todas as empresas';
-  const platData=DB.plataformas[platKey].filter(r=>s.plat==='Todas as plataformas'||r.p===s.plat);
+  // Filtra plataformas pelo período
+  const mesMap2={'Jun 2026':'Jun/26','Mai 2026':'Mai/26','Abr 2026':'Abr/26','Mar 2026':'Mar/26','Fev 2026':'Fev/26','Jan 2026':'Jan/26'};
+  const mesCsvPlat=mesMap2[s.period]||'';
+  const platSource=DB.plataformasAll||[];
+  const platFiltrado=platSource.filter(r=>!r.mes||r.mes===mesCsvPlat).filter(r=>r.leads>0);
+  // Agrupa por plataforma somando leads
+  const platMap={};
+  platFiltrado.forEach(r=>{platMap[r.p]=(platMap[r.p]||0)+r.leads;});
+  const CORES={'Meta Ads':'#2563EB','Google Ads':'#DC2626','LinkedIn Ads':'#7C3AED','WhatsApp':'#059669','Orgânico':'#0891B2','TikTok Ads':'#D97706','Indicação':'#9CA3AF'};
+  const platDataAll=Object.entries(platMap).map(([p,leads])=>({p,leads,cor:CORES[p]||'#9CA3AF'})).sort((a,b)=>b.leads-a.leads);
+  const platData=platDataAll.filter(r=>s.plat==='Todas as plataformas'||r.p===s.plat);
   // Filtra campanhas pelo período selecionado
 const mesMap={'Jun 2026':'Jun/26','Mai 2026':'Mai/26','Abr 2026':'Abr/26','Mar 2026':'Mar/26','Fev 2026':'Fev/26','Jan 2026':'Jan/26'};
 const mesCsv=mesMap[s.period]||'';
@@ -610,7 +625,33 @@ function renderEmpresaTable(kpis,s){
 
 function renderCampTable(data){
   if(!data.length){document.getElementById('campTb').innerHTML=`<tr><td colspan="11" class="empty">Nenhuma campanha para os filtros selecionados.</td></tr>`;return;}
-  document.getElementById('campTb').innerHTML=data.map(c=>`<tr><td style="font-weight:600">${c.campanha}</td><td>${c.empresa}</td><td>${c.plataforma}</td><td>${c.investimento}</td><td>${c.impressoes}</td><td>${c.cliques}</td><td>${c.ctr}</td><td>${c.leads}</td><td>${c.cpl}</td><td>${c.vendas}</td><td><span class="bk ${c.roi>=1?'bok':'bbd'}">R$${c.roi}</span></td></tr>`).join('');
+  const s=getState();
+
+  // Distribui vendas e receita proporcionalmente por leads entre campanhas da mesma empresa
+  const empresaLeads={};
+  data.forEach(c=>{
+    const key=c.empresa+'|'+s.period;
+    empresaLeads[key]=(empresaLeads[key]||0)+Number(c.leads);
+  });
+
+  document.getElementById('campTb').innerHTML=data.map(c=>{
+    const key=c.empresa+'|'+s.period;
+    const totalLeadsEmpresa=empresaLeads[key]||1;
+    const proporcao=Number(c.leads)/totalLeadsEmpresa;
+
+    // Busca vendas e receita reais da empresa no período
+    const kpisEmpresa=(DB.kpis[s.period]||[]).find(r=>r.empresa===c.empresa);
+    const vendasEmpresa=kpisEmpresa?Number(kpisEmpresa.taxa>0?Math.round(Number(kpisEmpresa.leads_mes)*Number(kpisEmpresa.taxa)/100):0):0;
+    const receitaEmpresa=kpisEmpresa?Number(kpisEmpresa.receita):0;
+
+    const vendasCamp=receitaEmpresa>0||vendasEmpresa>0?Math.round(vendasEmpresa*proporcao):c.vendas;
+    const receitaCamp=receitaEmpresa>0?Math.round(receitaEmpresa*proporcao):c.receita;
+    const invNum=Number(String(c.investimento).replace(/[^0-9.,]/g,'').replace(',','.'));
+    const roiCalc=invNum>0&&receitaCamp>0?(receitaCamp/invNum).toFixed(1):c.roi;
+    const roiOk=Number(roiCalc)>=1;
+
+    return`<tr><td style="font-weight:600">${c.campanha}</td><td>${c.empresa}</td><td>${c.plataforma||'—'}</td><td>${c.investimento}</td><td>${c.impressoes}</td><td>${c.cliques}</td><td>${c.ctr}</td><td>${c.leads}</td><td>${c.cpl}</td><td>${vendasCamp||'—'}</td><td><span class="bk ${roiOk?'bok':'bbd'}">R$${roiCalc}</span></td></tr>`;
+  }).join('');
 }
 
 function renderAlerts(kpis,camps){
