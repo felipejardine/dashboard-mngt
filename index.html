@@ -419,10 +419,14 @@ function mergeKpis(rows){
 
 function onEmpresaChange(){
   const e=document.getElementById('fEmpresa').value;
+  const s=getState();
+  const mesMap={'Jun 2026':'Jun/26','Mai 2026':'Mai/26','Abr 2026':'Abr/26','Mar 2026':'Mar/26','Fev 2026':'Fev/26','Jan 2026':'Jan/26'};
+  const mesCsv=mesMap[s.period]||'';
   const sel=document.getElementById('fCamp');
   const prev=sel.value;
   sel.innerHTML='<option>Todas as campanhas</option>';
-  [...new Set((DB.campanhasAll||DB.campanhas).filter(c=>e==='Todas as empresas'||c.empresa===e).map(c=>c.campanha))].forEach(c=>{const o=document.createElement('option');o.value=c;o.textContent=c;sel.appendChild(o);});
+  const fonte=(DB.campanhasAll||DB.campanhas).filter(c=>(!c.mes||c.mes===mesCsv)&&(e==='Todas as empresas'||c.empresa===e));
+  [...new Set(fonte.map(c=>c.campanha))].forEach(c=>{const o=document.createElement('option');o.value=c;o.textContent=c;sel.appendChild(o);});
   if([...sel.options].some(o=>o.value===prev))sel.value=prev;
   applyFilters();
 }
