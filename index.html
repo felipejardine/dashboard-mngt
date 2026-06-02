@@ -285,11 +285,13 @@ async function fetchCSV(url,headerKeyword){
       download:true,header:true,skipEmptyLines:true,
       beforeFirstChunk:function(chunk){
         if(!headerKeyword) return chunk;
-        const lines=chunk.split('\n');
+        const lines=chunk.split(/\r?\n/);
         let startIdx=0;
         for(let i=0;i<lines.length;i++){
           const firstCell=lines[i].split(',')[0].replace(/"/g,'').trim();
-          if(firstCell===headerKeyword){startIdx=i;break;}
+          if(firstCell===headerKeyword||firstCell.normalize('NFD').replace(/[\u0300-\u036f]/g,'')===headerKeyword.normalize('NFD').replace(/[\u0300-\u036f]/g,'')){
+            startIdx=i;break;
+          }
         }
         return lines.slice(startIdx).join('\n');
       },
@@ -307,14 +309,7 @@ async function loadAllData(){
     document.getElementById('lastUpdate').textContent='Carregando...';
     try{
       const [k,ld,lm,plt,camp]=await Promise.all([fetchCSV(SHEETS.kpis,'Mês'),fetchCSV(SHEETS.leads_diarios,'Data'),fetchCSV(SHEETS.leads_mensais,'Mês'),fetchCSV(SHEETS.plataformas,'Plataforma'),fetchCSV(SHEETS.campanhas,'Campanha')]);
-      // Carrega KPIs para TODOS os períodos disponíveis
-      if(k){
-        const periods=['Jun 2026','Mai 2026','Abr 2026','Mar 2026','Fev 2026','Jan 2026'];
-        const empresasValidas=['Área Incrível','Mais Armazém','Centro Logístico'];
-        const allRows=k.filter(r=>empresasValidas.includes((r['Empresa']||r['empresa']||'').trim()));
-        // O CSV só tem um mês — aplica para o período selecionado e mantém demo para os outros
-        mergeKpis(k);
-      }
+      if(k) mergeKpis(k);
 
       // Leads diários — ignora linhas sem data válida
       if(ld){
