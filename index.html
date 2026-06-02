@@ -330,19 +330,23 @@ async function loadAllData(){
     if(camp){
       const validCamp=camp.filter(r=>{const c=r['Campanha']||r['campanha']||'';return c.trim().length>0&&!c.includes('Campanha')&&!c.includes('linha');});
       if(validCamp.length>0){
-        DB.campanhas=validCamp.map(r=>({
+        // Guarda todas as campanhas com o mês para filtrar depois
+        DB.campanhasAll=validCamp.map(r=>({
+          mes:(r['Mês']||r['mes']||'').trim(),
           campanha:(r['Campanha']||r['campanha']||'').trim(),
           empresa:(r['Empresa']||r['empresa']||'').trim(),
           plataforma:(r['Plataforma']||r['plataforma']||'').trim(),
-          investimento:(r['Investimento']||r['investimento']||'R$0').trim(),
-          impressoes:(r['Impressões']||r['impressoes']||'—').trim(),
-          cliques:(r['Cliques']||r['cliques']||'—').trim(),
-          ctr:(r['CTR']||r['ctr']||'—').trim(),
+          investimento:(r['Investimento (R$)']||r['Investimento']||r['investimento']||'R$0').toString().trim(),
+          impressoes:(r['Impressões']||r['impressoes']||'—').toString().trim(),
+          cliques:(r['Cliques']||r['cliques']||'—').toString().trim(),
+          ctr:(r['CTR (%)']||r['CTR']||r['ctr']||'—').toString().trim(),
           leads:Number(r['Leads']||r['leads'])||0,
-          cpl:(r['CPL (R$)']||r['cpl']||'—').trim(),
+          cpl:(r['CPL (R$)']||r['cpl']||'—').toString().trim(),
           vendas:Number(r['Vendas']||r['vendas'])||0,
+          receita:Number(r['Receita (R$)']||r['receita'])||0,
           roi:Number(r['ROI']||r['roi'])||0,
         }));
+        DB.campanhas=DB.campanhasAll;
       }
     }
 
@@ -412,7 +416,7 @@ function onEmpresaChange(){
   const sel=document.getElementById('fCamp');
   const prev=sel.value;
   sel.innerHTML='<option>Todas as campanhas</option>';
-  [...new Set(DB.campanhas.filter(c=>e==='Todas as empresas'||c.empresa===e).map(c=>c.campanha))].forEach(c=>{const o=document.createElement('option');o.value=c;o.textContent=c;sel.appendChild(o);});
+  [...new Set((DB.campanhasAll||DB.campanhas).filter(c=>e==='Todas as empresas'||c.empresa===e).map(c=>c.campanha))].forEach(c=>{const o=document.createElement('option');o.value=c;o.textContent=c;sel.appendChild(o);});
   if([...sel.options].some(o=>o.value===prev))sel.value=prev;
   applyFilters();
 }
@@ -422,7 +426,11 @@ function applyFilters(){
   const kpis=(DB.kpis[s.period]||DB.kpis['Jun 2026']).filter(r=>s.empresa==='Todas as empresas'||r.empresa===s.empresa);
   const platKey=DB.plataformas[s.empresa]?s.empresa:'Todas as empresas';
   const platData=DB.plataformas[platKey].filter(r=>s.plat==='Todas as plataformas'||r.p===s.plat);
-  const campData=DB.campanhas.filter(c=>(s.empresa==='Todas as empresas'||c.empresa===s.empresa)&&(s.plat==='Todas as plataformas'||c.plataforma===s.plat)&&(s.camp==='Todas as campanhas'||c.campanha===s.camp));
+  // Filtra campanhas pelo período selecionado
+const mesMap={'Jun 2026':'Jun/26','Mai 2026':'Mai/26','Abr 2026':'Abr/26','Mar 2026':'Mar/26','Fev 2026':'Fev/26','Jan 2026':'Jan/26'};
+const mesCsv=mesMap[s.period]||'';
+const campBase=(DB.campanhasAll||DB.campanhas).filter(c=>!c.mes||c.mes===mesCsv||mesCsv==='');
+const campData=campBase.filter(c=>(s.empresa==='Todas as empresas'||c.empresa===s.empresa)&&(s.plat==='Todas as plataformas'||c.plataforma===s.plat)&&(s.camp==='Todas as campanhas'||c.campanha===s.camp));
   document.getElementById('subTitle').textContent=s.empresa==='Todas as empresas'?'Área Incrível · Mais Armazém · Centro Logístico':s.empresa;
   document.getElementById('periodLabel').textContent=s.period;
   renderKPIs(kpis,s);renderCompare(kpis,s);renderDaily(s);renderMonthly(s);
