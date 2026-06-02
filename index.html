@@ -450,6 +450,14 @@ const mesMap={'Jun 2026':'Jun/26','Mai 2026':'Mai/26','Abr 2026':'Abr/26','Mar 2
 const mesCsv=mesMap[s.period]||'';
 const campBase=(DB.campanhasAll||DB.campanhas).filter(c=>!c.mes||c.mes===mesCsv||mesCsv==='');
 const campData=campBase.filter(c=>(s.empresa==='Todas as empresas'||c.empresa===s.empresa)&&(s.plat==='Todas as plataformas'||c.plataforma===s.plat)&&(s.camp==='Todas as campanhas'||c.campanha===s.camp));
+  // Atualiza dropdown de campanhas conforme período e empresa selecionados
+  const selCamp=document.getElementById('fCamp');
+  const prevCamp=selCamp.value;
+  selCamp.innerHTML='<option>Todas as campanhas</option>';
+  const fonteCamp=(DB.campanhasAll||DB.campanhas).filter(c=>(!c.mes||c.mes===mesCsv)&&(s.empresa==='Todas as empresas'||c.empresa===s.empresa)&&(s.plat==='Todas as plataformas'||c.plataforma===s.plat));
+  [...new Set(fonteCamp.map(c=>c.campanha))].forEach(c=>{const o=document.createElement('option');o.value=c;o.textContent=c;selCamp.appendChild(o);});
+  if([...selCamp.options].some(o=>o.value===prevCamp))selCamp.value=prevCamp;
+
   document.getElementById('subTitle').textContent=s.empresa==='Todas as empresas'?'Área Incrível · Mais Armazém · Centro Logístico':s.empresa;
   document.getElementById('periodLabel').textContent=s.period;
   renderKPIs(kpis,s);renderCompare(kpis,s);renderDaily(s);renderMonthly(s);
