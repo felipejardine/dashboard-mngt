@@ -698,10 +698,11 @@ function renderCampTable(data){
     const vendasEmpresa=kpisEmpresa?Number(kpisEmpresa.taxa>0?Math.round(Number(kpisEmpresa.leads_mes)*Number(kpisEmpresa.taxa)/100):0):0;
     const receitaEmpresa=kpisEmpresa?Number(kpisEmpresa.receita):0;
 
-    const vendasCamp=receitaEmpresa>0||vendasEmpresa>0?Math.round(vendasEmpresa*proporcao):c.vendas;
-    const receitaCamp=receitaEmpresa>0?Math.round(receitaEmpresa*proporcao):c.receita;
-    const invNum=Number(String(c.investimento).replace(/[^0-9.,]/g,'').replace(',','.'));
-    const roiCalc=invNum>0&&receitaCamp>0?(receitaCamp/invNum).toFixed(1):c.roi;
+    // Usa valor direto da campanha se preenchido, senão distribui proporcionalmente
+    const vendasCamp=c.vendas>0?c.vendas:(receitaEmpresa>0||vendasEmpresa>0?Math.round(vendasEmpresa*proporcao):0);
+    const receitaCamp=c.receita>0?c.receita:(receitaEmpresa>0?Math.round(receitaEmpresa*proporcao):0);
+    const invNum=parseBR(c.investimento);
+    const roiCalc=c.roi>0?c.roi.toFixed(1):(invNum>0&&receitaCamp>0?(receitaCamp/invNum).toFixed(1):'—');
     const roiOk=Number(roiCalc)>=1;
 
     return`<tr><td style="font-weight:600">${c.campanha}</td><td>${c.empresa}</td><td>${c.plataforma||'—'}</td><td>${c.investimento}</td><td>${c.impressoes}</td><td>${c.cliques}</td><td>${c.ctr}</td><td>${c.leads}</td><td>${c.cpl}</td><td>${vendasCamp||'—'}</td><td><span class="bk ${roiOk?'bok':'bbd'}">R$${roiCalc}</span></td></tr>`;
