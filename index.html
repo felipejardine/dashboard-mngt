@@ -510,17 +510,44 @@ function renderKPIs(kpis,s){
     sqlPct=Math.round(SQL_RATE/MQL_RATE*100);
   }
 
+  // Dados do mês anterior para comparar
+  const s2=getState();
+  const prevMap2={'Jun 2026':'Mai 2026','Mai 2026':'Abr 2026','Abr 2026':'Mar 2026','Mar 2026':'Fev 2026','Fev 2026':'Jan 2026','Jan 2026':'Jan 2026'};
+  const prevPeriod2=prevMap2[s2.period]||'Mai 2026';
+  const prevKpis2=(DB.kpis[prevPeriod2]||[]).filter(r=>s2.empresa==='Todas as empresas'||r.empresa===s2.empresa);
+  const prevInv2=prevKpis2.reduce((a,r)=>a+Number(r.investimento),0);
+  const prevLm2=prevKpis2.reduce((a,r)=>a+Number(r.leads_mes),0);
+  const prevVd2=prevKpis2.reduce((a,r)=>a+Math.round(Number(r.leads_mes)*Number(r.taxa)/100),0);
+  const prevRec2=prevKpis2.reduce((a,r)=>a+Number(r.receita),0);
+  const prevCpl2=prevLm2>0?prevInv2/prevLm2:0;
+  const prevCac2=prevVd2>0?prevInv2/prevVd2:0;
+  const prevRoi2=prevInv2>0?prevRec2/prevInv2:0;
+
+  function varSeta(curr,prev,upGood){
+    if(!prev||prev===0) return '<span class="mu">—</span>';
+    const d=Math.round((curr-prev)/prev*100);
+    if(d===0) return '<span class="mu">= igual ao ant.</span>';
+    const good=upGood?d>0:d<0;
+    const cls=good?'up':'dn';
+    const arrow=d>0?'↑':'↓';
+    return '<span class="'+cls+'">'+arrow+' '+Math.abs(d)+'% vs ant.</span>';
+  }
+
+  const diasNoMes=new Date().getDate();
+  const mediaLeadsDia=diasNoMes>1&&lm>0?Math.round(lm/diasNoMes):0;
+  const leadsHojeSeta=mediaLeadsDia>0?(tl>mediaLeadsDia?'<span class="up">↑ acima da média</span>':tl<mediaLeadsDia?'<span class="dn">↓ abaixo da média</span>':'<span class="mu">= média do mês</span>'):'<span class="mu">Hoje</span>';
+
   document.getElementById('kpiGrid').innerHTML=[
-    {l:'Leads hoje',v:tl,s:'<span class="up">↑ +12% vs ontem</span>',cl:''},
-    {l:'Leads do mês',v:lm,s:`Meta ${meta} · <b style="color:#111827">${mp}%</b>`,cl:''},
-    {l:'SQL',v:sql,s:`<span style="color:#10B981">${sqlPct}% dos leads</span>`,cl:'sql'},
+    {l:'Leads hoje',v:tl,s:leadsHojeSeta,cl:''},
+    {l:'Leads do mês',v:lm,s:'Meta '+meta+' · <b style="color:#111827">'+mp+'%</b>',cl:''},
+    {l:'SQL',v:sql,s:'<span style="color:#10B981">'+sqlPct+'% dos leads</span>',cl:'sql'},
     {l:'Investimento',v:fmtK(inv),s:'<span class="mu">Período atual</span>',cl:''},
-    {l:'CPL médio',v:fmtBRL(cpl),s:'<span class="up">↓ −5% melhora</span>',cl:''},
-    {l:'CAC médio',v:fmtBRL(cac),s:'<span class="dn">↑ +3% vs ant.</span>',cl:''},
-    {l:'ROI médio',v:'R$'+roi.toFixed(1),s:'<span class="up">↑ +15% vs ant.</span>',cl:''},
+    {l:'CPL médio',v:fmtBRL(cpl),s:varSeta(cpl,prevCpl2,false),cl:''},
+    {l:'CAC médio',v:fmtBRL(cac),s:varSeta(cac,prevCac2,false),cl:''},
+    {l:'ROI médio',v:'R$'+roi.toFixed(1),s:varSeta(roi,prevRoi2,true),cl:''},
     {l:'Tx. conversão',v:tx.toFixed(1)+'%',s:'<span class="mu">Lead → cliente</span>',cl:''},
-    {l:'Pipeline',v:fmtK(pip),s:`<span>${Math.round(pip/80000)} oportunidades</span>`,cl:'hi'},
-  ].map(k=>`<div class="kc ${k.cl}"><p class="kl">${k.l}</p><p class="kv">${k.v}</p><p class="ks">${k.s}</p></div>`).join('');
+    {l:'Pipeline',v:fmtK(pip),s:'<span class="mu">Em negociação</span>',cl:'hi'},
+  ].map(k=>'<div class="kc '+k.cl+'"><p class="kl">'+k.l+'</p><p class="kv">'+k.v+'</p><p class="ks">'+k.s+'</p></div>').join('');
 }
 
 function renderCompare(kpis,s){
@@ -538,14 +565,23 @@ function renderCompare(kpis,s){
   const sqlCurr=funCurr?funCurr.reduce((a,r)=>a+r.sql,0):Math.round(c.lm*SQL_RATE);
   const sqlPrev=funPrevRows?funPrevRows.reduce((a,r)=>a+r.sql,0):Math.round(p.lm*SQL_RATE);
 
+  // Mês atual sempre em cinza (ainda em andamento)
+  const isCurrentMonth = s.period === document.getElementById('fPeriod').options[0].value;
   const items=[
     {l:'Leads',curr:c.lm,prev:p.lm,fmt:v=>v,up:true},
     {l:'SQL',curr:sqlCurr,prev:sqlPrev,fmt:v=>v,up:true},
-    {l:'Investimento',curr:c.inv,prev:p.inv,fmt:fmtK,up:false},
-    {l:'CPL',curr:c.lm>0?c.inv/c.lm:0,prev:p.lm>0?p.inv/p.lm:0,fmt:fmtBRL,up:true},
+    {l:'Investimento',curr:c.inv,prev:p.inv,fmt:fmtK,up:true}, // maior = melhor
+    {l:'CPL',curr:c.lm>0?c.inv/c.lm:0,prev:p.lm>0?p.inv/p.lm:0,fmt:fmtBRL,up:false}, // menor = melhor
     {l:'ROI',curr:c.inv>0?c.rec/c.inv:0,prev:p.inv>0?p.rec/p.inv:0,fmt:v=>'R$'+v.toFixed(1),up:true},
   ];
-  document.getElementById('compGrid').innerHTML=items.map(i=>{const d=i.prev>0?Math.round((i.curr-i.prev)/i.prev*100):0;const good=i.up?d>0:d<0;return`<div class="ck"><p class="cl2">${i.l}</p><p class="cv">${i.fmt(i.curr)}</p><p class="cd ${good?'up':'dn'}">${d>0?'↑':'↓'} ${Math.abs(d)}%</p></div>`;}).join('');
+  document.getElementById('compGrid').innerHTML=items.map(i=>{
+    const d=i.prev>0?Math.round((i.curr-i.prev)/i.prev*100):0;
+    const good=i.up?d>0:d<0;
+    // Mês atual em cinza, meses passados com cor
+    const cls=isCurrentMonth?'mu':(good?'up':'dn');
+    const label=isCurrentMonth?'Mês em andamento':(d>0?'↑ +'+Math.abs(d)+'%':'↓ −'+Math.abs(d)+'%');
+    return`<div class="ck"><p class="cl2">${i.l}</p><p class="cv">${i.fmt(i.curr)}</p><p class="cd ${cls}">${label}</p></div>`;
+  }).join('');
 }
 
 function renderDaily(s){
