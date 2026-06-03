@@ -326,6 +326,7 @@ async function loadAllData(){
       if(validPlat.length>0){
         DB.plataformasAll=validPlat.map(r=>({
           mes:(r['Mês']||r['mes']||'').trim(),
+          empresa:(r['Empresa']||r['empresa']||'').trim(),
           p:(r['Plataforma']||r['plataforma']||'').trim(),
           leads:Number(r['Leads']||r['leads'])||0,
         }));
@@ -437,7 +438,10 @@ function applyFilters(){
   const mesMap2={'Jun 2026':'Jun/26','Mai 2026':'Mai/26','Abr 2026':'Abr/26','Mar 2026':'Mar/26','Fev 2026':'Fev/26','Jan 2026':'Jan/26'};
   const mesCsvPlat=mesMap2[s.period]||'';
   const platSource=DB.plataformasAll||[];
-  const platFiltrado=platSource.filter(r=>!r.mes||r.mes===mesCsvPlat).filter(r=>r.leads>0);
+  const platFiltrado=platSource
+    .filter(r=>!r.mes||r.mes===mesCsvPlat)
+    .filter(r=>s.empresa==='Todas as empresas'||!r.empresa||r.empresa===s.empresa)
+    .filter(r=>r.leads>0);
   // Agrupa por plataforma somando leads
   const platMap={};
   platFiltrado.forEach(r=>{platMap[r.p]=(platMap[r.p]||0)+r.leads;});
