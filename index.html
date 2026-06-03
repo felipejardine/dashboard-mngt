@@ -523,13 +523,12 @@ function renderKPIs(kpis,s){
   const prevCac2=prevVd2>0?prevInv2/prevVd2:0;
   const prevRoi2=prevInv2>0?prevRec2/prevInv2:0;
 
-  const isCurrMonth=s2.period===document.getElementById('fPeriod').options[0].value;
   function varSeta(curr,prev,upGood){
     if(!prev||prev===0) return '<span class="mu">—</span>';
     const d=Math.round((curr-prev)/prev*100);
     if(d===0) return '<span class="mu">= igual ao ant.</span>';
     const good=upGood?d>0:d<0;
-    const cls=isCurrMonth?'mu':(good?'up':'dn');
+    const cls=good?'up':'dn';
     const arrow=d>0?'↑':'↓';
     return '<span class="'+cls+'">'+arrow+' '+Math.abs(d)+'% vs ant.</span>';
   }
@@ -674,7 +673,7 @@ function renderEmpresaTable(kpis,s){
     const mp=tm>0?Math.round(tl/tm*100):0;
     const tmql=funRows?funRows.reduce((a,r)=>a+r.mql,0):Math.round(tl*MQL_RATE);
     const tsql=funRows?funRows.reduce((a,r)=>a+r.sql,0):Math.round(tl*SQL_RATE);
-    rows.push(`<tr style="background:#F9FAFB;font-weight:600"><td>Total Grupo</td><td>${tl}</td><td style="color:#047857">${tsql}</td><td>${fmtK(ti)}</td><td>${tl>0?fmtBRL(ti/tl):'—'}</td><td>${tv>0?fmtBRL(ti/tv):'—'}</td><td>${tv}</td><td>${fmtK(tr2)}</td><td>${tr2>0&&ti>0?'R$'+(tr2/ti).toFixed(1):'—'}</td><td>${tl>0&&tv>0?(tv/tl*100).toFixed(1)+'%':'—'}</td><td><span class="bk bok">🟢 ${mp}%</span></td></tr>`);
+    
   }
   document.getElementById('empresaTb').innerHTML=rows.join('');
 }
