@@ -541,7 +541,7 @@ function renderKPIs(kpis,s){
     {l:'Leads hoje',v:tl,s:leadsHojeSeta,cl:''},
     {l:'Leads do mês',v:lm,s:'Meta '+meta+' · <b style="color:#111827">'+mp+'%</b>',cl:''},
     {l:'SQL',v:sql,s:'<span style="color:#10B981">'+sqlPct+'% dos leads</span>',cl:'sql'},
-    {l:'Investimento',v:fmtK(inv),s:'<span class="mu">Período atual</span>',cl:''},
+    {l:'Investimento',v:fmtK(inv),s:varSeta(inv,prevInv2,true),cl:''},
     {l:'CPL médio',v:fmtBRL(cpl),s:varSeta(cpl,prevCpl2,false),cl:''},
     {l:'CAC médio',v:fmtBRL(cac),s:varSeta(cac,prevCac2,false),cl:''},
     {l:'ROI médio',v:'R$'+roi.toFixed(1),s:varSeta(roi,prevRoi2,true),cl:''},
