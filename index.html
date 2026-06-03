@@ -592,13 +592,12 @@ function renderFunnel(kpis,s){
 
   const fd=[
     {l:'Leads',v:lm},
-    {l:'MQL',v:mql},
     {l:'SQL',v:sql},
     {l:'Oportunidades',v:opor},
     {l:'Negociações',v:neg},
     {l:'Vendas',v:vendas}
   ];
-  const fc=['#2563EB','#7C3AED','#059669','#0891B2','#D97706','#F59E0B'];
+  const fc=['#2563EB','#059669','#0891B2','#D97706','#F59E0B'];
   document.getElementById('funnel').innerHTML=fd.map((f,i)=>{
     const pw=Math.max(5,Math.round(f.v/Math.max(fd[0].v,1)*100));
     const cv=i>0&&fd[i-1].v>0?' · '+Math.round(f.v/fd[i-1].v*100)+'% ant.':'';
