@@ -681,31 +681,13 @@ function renderCampTable(data){
   if(!data.length){document.getElementById('campTb').innerHTML=`<tr><td colspan="11" class="empty">Nenhuma campanha para os filtros selecionados.</td></tr>`;return;}
   const s=getState();
 
-  // Distribui vendas e receita proporcionalmente por leads entre campanhas da mesma empresa
-  const empresaLeads={};
-  data.forEach(c=>{
-    const key=c.empresa+'|'+s.period;
-    empresaLeads[key]=(empresaLeads[key]||0)+Number(c.leads);
-  });
-
   document.getElementById('campTb').innerHTML=data.map(c=>{
-    const key=c.empresa+'|'+s.period;
-    const totalLeadsEmpresa=empresaLeads[key]||1;
-    const proporcao=Number(c.leads)/totalLeadsEmpresa;
-
-    // Busca vendas e receita reais da empresa no período
-    const kpisEmpresa=(DB.kpis[s.period]||[]).find(r=>r.empresa===c.empresa);
-    const vendasEmpresa=kpisEmpresa?Number(kpisEmpresa.taxa>0?Math.round(Number(kpisEmpresa.leads_mes)*Number(kpisEmpresa.taxa)/100):0):0;
-    const receitaEmpresa=kpisEmpresa?Number(kpisEmpresa.receita):0;
-
-    // Usa valor direto da campanha se preenchido, senão distribui proporcionalmente
-    const vendasCamp=c.vendas>0?c.vendas:(receitaEmpresa>0||vendasEmpresa>0?Math.round(vendasEmpresa*proporcao):0);
-    const receitaCamp=c.receita>0?c.receita:(receitaEmpresa>0?Math.round(receitaEmpresa*proporcao):0);
+    // Mostra apenas o que está preenchido na planilha — sem cálculos automáticos
     const invNum=parseBR(c.investimento);
-    const roiCalc=c.roi>0?c.roi.toFixed(1):(invNum>0&&receitaCamp>0?(receitaCamp/invNum).toFixed(1):'—');
-    const roiOk=Number(roiCalc)>=1;
-
-    return`<tr><td style="font-weight:600">${c.campanha}</td><td>${c.empresa}</td><td>${c.plataforma||'—'}</td><td>${c.investimento}</td><td>${c.impressoes}</td><td>${c.cliques}</td><td>${c.ctr}</td><td>${c.leads}</td><td>${c.cpl}</td><td>${vendasCamp||'—'}</td><td><span class="bk ${roiOk?'bok':'bbd'}">R$${roiCalc}</span></td></tr>`;
+    const vendas=c.vendas>0?c.vendas:'—';
+    const roi=c.roi>0?c.roi.toFixed(1):'—';
+    const roiOk=c.roi>=1;
+    return`<tr><td style="font-weight:600">${c.campanha}</td><td>${c.empresa}</td><td>${c.plataforma||'—'}</td><td>${c.investimento}</td><td>${c.impressoes}</td><td>${c.cliques}</td><td>${c.ctr}</td><td>${c.leads}</td><td>${c.cpl}</td><td>${vendas}</td><td><span class="bk ${roiOk?'bok':'bbd'}">${roi!=='—'?'R$'+roi:'—'}</span></td></tr>`;
   }).join('');
 }
 
