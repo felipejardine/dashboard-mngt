@@ -577,9 +577,10 @@ function renderCompare(kpis,s){
   document.getElementById('compGrid').innerHTML=items.map(i=>{
     const d=i.prev>0?Math.round((i.curr-i.prev)/i.prev*100):0;
     const good=i.up?d>0:d<0;
-    // Mês atual em cinza, meses passados com cor
+    // Mês atual: mostra seta mas em cinza. Meses passados: verde/vermelho
     const cls=isCurrentMonth?'mu':(good?'up':'dn');
-    const label=isCurrentMonth?'Mês em andamento':(d>0?'↑ +'+Math.abs(d)+'%':'↓ −'+Math.abs(d)+'%');
+    const arrow=d>0?'↑ +':'↓ −';
+    const label=i.prev>0?(arrow+Math.abs(d)+'% vs ant.'):'—';
     return`<div class="ck"><p class="cl2">${i.l}</p><p class="cv">${i.fmt(i.curr)}</p><p class="cd ${cls}">${label}</p></div>`;
   }).join('');
 }
