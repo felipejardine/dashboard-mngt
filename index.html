@@ -260,6 +260,12 @@ const DEMO={
 let DB=JSON.parse(JSON.stringify(DEMO));
 let charts={};
 
+function parseBR(v){
+  if(!v||v==='—'||v==='') return 0;
+  // Remove R$, spaces, then convert BR format (1.234,56) to JS (1234.56)
+  const s=String(v).replace(/R\$\s*/g,'').replace(/\./g,'').replace(',','.').trim();
+  return Number(s)||0;
+}
 function fmtBRL(v){return'R$'+Math.round(Number(v)).toLocaleString('pt-BR')}
 function fmtK(v){return v>=1000000?'R$'+(v/1000000).toFixed(1)+'M':v>=1000?'R$'+(v/1000).toFixed(0)+'k':fmtBRL(v)}
 function destroyChart(id){if(charts[id]){charts[id].destroy();delete charts[id];}}
@@ -402,16 +408,16 @@ function mergeKpis(rows){
     if(rowsDoMes.length>0){
       DB.kpis[period]=rowsDoMes.map(r=>({
         empresa:(r['Empresa']||r['empresa']||'').trim(),
-        leads_hoje:Number(r['Leads Hoje']||r['leads_hoje'])||0,
-        leads_mes:Number(r['Leads Mês']||r['leads_mes'])||0,
-        meta_mes:Number(r['Meta Mês']||r['meta_mes'])||0,
-        investimento:Number(r['Investimento (R$)']||r['investimento'])||0,
-        cpl:Number(r['CPL (R$)']||r['cpl'])||0,
-        cac:Number(r['CAC (R$)']||r['cac'])||0,
-        roi:Number(r['ROI']||r['roi'])||0,
-        taxa:Number(r['Taxa Conv. (%)']||r['taxa_conversao'])||0,
-        pipeline:Number(r['Pipeline (R$)']||r['pipeline'])||0,
-        receita:Number(r['Receita (R$)']||r['receita'])||0,
+        leads_hoje:parseBR(r['Leads Hoje']||r['leads_hoje']),
+        leads_mes:parseBR(r['Leads Mês']||r['leads_mes']),
+        meta_mes:parseBR(r['Meta Mês']||r['meta_mes']),
+        investimento:parseBR(r['Investimento (R$)']||r['investimento']),
+        cpl:parseBR(r['CPL (R$)']||r['cpl']),
+        cac:parseBR(r['CAC (R$)']||r['cac']),
+        roi:parseBR(r['ROI']||r['roi']),
+        taxa:parseBR(r['Taxa Conv. (%)']||r['taxa_conversao']),
+        pipeline:parseBR(r['Pipeline (R$)']||r['pipeline']),
+        receita:parseBR(r['Receita (R$)']||r['receita']),
       }));
     }
   });
