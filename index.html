@@ -261,9 +261,9 @@ let DB=JSON.parse(JSON.stringify(DEMO));
 let charts={};
 
 function parseBR(v){
-  if(!v||v==='—'||v==='') return 0;
-  // Remove R$, spaces, then convert BR format (1.234,56) to JS (1234.56)
-  const s=String(v).replace(/R\$\s*/g,'').replace(/\./g,'').replace(',','.').trim();
+  if(!v||v==='—'||v===''||v===null||v===undefined) return 0;
+  // Remove R$, x, spaces, then convert BR format (1.234,56) to JS (1234.56)
+  const s=String(v).replace(/R\$\s*/g,'').replace(/x$/i,'').replace(/\./g,'').replace(',','.').trim();
   return Number(s)||0;
 }
 function fmtBRL(v){return'R$'+Math.round(Number(v)).toLocaleString('pt-BR')}
@@ -354,9 +354,9 @@ async function loadAllData(){
           ctr:(r['CTR (%)']||r['CTR']||r['ctr']||'—').toString().trim(),
           leads:Number(r['Leads']||r['leads'])||0,
           cpl:(r['CPL (R$)']||r['cpl']||'—').toString().trim(),
-          vendas:Number(r['Vendas']||r['vendas'])||0,
-          receita:Number(r['Receita (R$)']||r['receita'])||0,
-          roi:Number(r['ROI']||r['roi'])||0,
+          vendas:parseBR(r['Vendas']||r['vendas']),
+          receita:parseBR(r['Receita (R$)']||r['receita']),
+          roi:parseBR(r['ROI']||r['roi']),
         }));
         DB.campanhas=DB.campanhasAll;
       }
