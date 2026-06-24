@@ -398,6 +398,9 @@ async function loadAllData(){
               negociacoes:Number(r['Negociações']||r['Negociacoes'])||0,
               vendas:Number(r['Vendas'])||0,
               receita:Number(r['Receita (R$)']||r['Receita'])||0,
+              visita_agendada:Number(r['Visita Agendada'])||0,
+              visita_realizada:Number(r['Visita Realizada'])||0,
+              analise_credito:Number(r['Análise de Crédito']||r['Analise de Credito'])||0,
             }));
           }
         });
@@ -628,7 +631,7 @@ function renderFunnel(kpis,s){
   const lm=kpis.reduce((a,r)=>a+Number(r.leads_mes),0);
   const vd=kpis.reduce((a,r)=>a+Math.round(Number(r.leads_mes)*Number(r.taxa)/100),0);
 
-  let mql,sql,opor,neg,vendas;
+  let mql,sql,opor,neg,vendas,visitaAg,visitaReal,analiseCred;
   const funRows=getFunilData(s);
   if(funRows&&funRows.length>0){
     mql=funRows.reduce((a,r)=>a+r.mql,0);
@@ -636,22 +639,35 @@ function renderFunnel(kpis,s){
     opor=funRows.reduce((a,r)=>a+r.oportunidades,0);
     neg=funRows.reduce((a,r)=>a+r.negociacoes,0);
     vendas=funRows.reduce((a,r)=>a+r.vendas,0)||vd;
+    visitaAg=funRows.reduce((a,r)=>a+(r.visita_agendada||0),0);
+    visitaReal=funRows.reduce((a,r)=>a+(r.visita_realizada||0),0);
+    analiseCred=funRows.reduce((a,r)=>a+(r.analise_credito||0),0);
   } else {
     mql=Math.round(lm*MQL_RATE);
     sql=Math.round(lm*SQL_RATE);
     opor=Math.round(lm*.11);
     neg=Math.round(lm*.06);
     vendas=vd;
+    visitaAg=0;visitaReal=0;analiseCred=0;
   }
 
-  const fd=[
-    {l:'Leads',v:lm},
-    {l:'SQL',v:sql},
-    {l:'Oportunidades',v:opor},
-    {l:'Negociações',v:neg},
-    {l:'Vendas',v:vendas}
-  ];
-  const fc=['#2563EB','#059669','#0891B2','#D97706','#F59E0B'];
+  // Etapas exclusivas da Área Incrível — só aparecem quando esse filtro está ativo
+  const isAreaIncrivel=s.empresa==='Área Incrível';
+
+  let fd=[{l:'Leads',v:lm}];
+  if(isAreaIncrivel){
+    fd.push({l:'Visita Agendada',v:visitaAg});
+    fd.push({l:'Visita Realizada',v:visitaReal});
+    fd.push({l:'Análise de Crédito',v:analiseCred});
+  }
+  fd.push({l:'SQL',v:sql});
+  fd.push({l:'Oportunidades',v:opor});
+  fd.push({l:'Negociações',v:neg});
+  fd.push({l:'Vendas',v:vendas});
+
+  const fcBase=['#2563EB','#7C3AED','#A855F7','#C026D3','#059669','#0891B2','#D97706','#F59E0B'];
+  const fc=isAreaIncrivel?fcBase:['#2563EB','#059669','#0891B2','#D97706','#F59E0B'];
+
   document.getElementById('funnel').innerHTML=fd.map((f,i)=>{
     const pw=Math.max(5,Math.round(f.v/Math.max(fd[0].v,1)*100));
     const cv=i>0&&fd[i-1].v>0?' · '+Math.round(f.v/fd[i-1].v*100)+'% ant.':'';
