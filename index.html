@@ -84,7 +84,7 @@ tr:hover td{background:#F9FAFB}
   <div class="hrow">
     <div>
       <p class="ey">Grupo MNGT</p>
-      <h1 class="h1">Dashboard de Marketing</h1>
+      <h1 class="h1">Dashboard Executivo de Performance Digital</h1>
       <p class="hs" id="subTitle">Área Incrível · Mais Armazém · Centro Logístico</p>
     </div>
     <div style="display:flex;align-items:center;gap:8px">
@@ -305,10 +305,27 @@ async function loadAllData(){
       const s=getState();
       const validDays=ld.filter(r=>/^\d{2}\/\d{2}$/.test((r['Data']||r['data']||'').trim()));
       if(validDays.length>0){
+        // Agrupa por dia real (dd), somando linhas duplicadas da mesma data
+        const porDia={};
+        validDays.forEach(r=>{
+          const data=(r['Data']||r['data']||'').trim();
+          const dia=parseInt(data.split('/')[0],10);
+          if(!porDia[dia]) porDia[dia]={ai:0,ma:0,cl:0};
+          porDia[dia].ai+=Number(r['Área Incrível']||r['area_incrivel'])||0;
+          porDia[dia].ma+=Number(r['Mais Armazém']||r['mais_armazem'])||0;
+          porDia[dia].cl+=Number(r['Centro Logístico']||r['centro_logistico'])||0;
+        });
+        // Gera array de 31 posições (dia 1 a 31), preenchendo com 0 onde não há dado
+        const arrAI=[],arrMA=[],arrCL=[];
+        for(let d=1;d<=31;d++){
+          arrAI.push(porDia[d]?porDia[d].ai:0);
+          arrMA.push(porDia[d]?porDia[d].ma:0);
+          arrCL.push(porDia[d]?porDia[d].cl:0);
+        }
         DB.leads_diarios[s.period]={
-          'Área Incrível': validDays.map(r=>Number(r['Área Incrível']||r['area_incrivel'])||0),
-          'Mais Armazém':  validDays.map(r=>Number(r['Mais Armazém']||r['mais_armazem'])||0),
-          'Centro Logístico': validDays.map(r=>Number(r['Centro Logístico']||r['centro_logistico'])||0),
+          'Área Incrível': arrAI,
+          'Mais Armazém':  arrMA,
+          'Centro Logístico': arrCL,
           meta: Number(validDays[0]['Meta Diária']||validDays[0]['meta'])||15,
         };
       }
