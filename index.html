@@ -267,7 +267,7 @@ function parseBR(v){
   return Number(s)||0;
 }
 function fmtBRL(v){return'R$'+Math.round(Number(v)).toLocaleString('pt-BR')}
-function fmtK(v){return v>=1000000?'R$'+(v/1000000).toFixed(1)+'M':v>=1000?'R$'+(v/1000).toFixed(0)+'k':fmtBRL(v)}
+function fmtK(v){return v>=1000000?'R$'+(v/1000000).toFixed(2)+'M':fmtBRL(v)}
 function destroyChart(id){if(charts[id]){charts[id].destroy();delete charts[id];}}
 function getState(){return{period:document.getElementById('fPeriod').value,empresa:document.getElementById('fEmpresa').value,plat:document.getElementById('fPlat').value,camp:document.getElementById('fCamp').value}}
 
@@ -726,17 +726,48 @@ function renderCampTable(data){
 }
 
 function renderAlerts(kpis,camps){
-  const sorted=[...kpis].sort((a,b)=>b.roi-a.roi);
-  const best=sorted[0],worst=sorted[sorted.length-1];
-  const badCamp=camps.filter(c=>c.roi<1);
-  const alerts=[
-    best?{t:'ok',m:`${best.empresa} tem o maior ROI (R$${best.roi}) — priorizar orçamento neste canal.`}:null,
-    worst&&worst!==best?{t:'wn',m:`${worst.empresa} tem o menor ROI (R$${worst.roi}) — revisar estratégia e criativos.`}:null,
-    ...badCamp.map(c=>({t:'bd',m:`Campanha "${c.campanha}" com ROI negativo (R$${c.roi}) — avaliar pausa imediata.`})),
-    {t:'ok',m:'Google Ads gera CPL médio 34% menor que Meta Ads e concentra mais leads qualificados.'},
-  ].filter(Boolean);
+  const alerts=[];
+
+  // ROI por empresa — só considera quem tem ROI real (>0)
+  const comROI=kpis.filter(k=>k.roi>0);
+  if(comROI.length>0){
+    const sorted=[...comROI].sort((a,b)=>b.roi-a.roi);
+    const best=sorted[0],worst=sorted[sorted.length-1];
+    if(best) alerts.push({t:'ok',m:`${best.empresa} tem o maior ROI (${best.roi.toFixed(1)}x) — priorizar orçamento neste canal.`});
+    if(worst&&worst!==best) alerts.push({t:'wn',m:`${worst.empresa} tem o menor ROI (${worst.roi.toFixed(1)}x) — revisar estratégia e criativos.`});
+  }
+
+  // Campanhas com ROI real negativo (só quando ROI foi de fato calculado, não "—")
+  const badCamp=camps.filter(c=>c.roi>0&&c.roi<1);
+  badCamp.forEach(c=>alerts.push({t:'bd',m:`Campanha "${c.campanha}" com ROI abaixo de 1x (${c.roi.toFixed(1)}x) — avaliar pausa imediata.`}));
+
+  // Má alocação de orçamento: dentro da mesma empresa+plataforma, campanha cara recebendo maior % do budget
+  const grupos={};
+  camps.forEach(c=>{
+    const key=c.empresa+'|'+c.plataforma;
+    if(!grupos[key]) grupos[key]=[];
+    const inv=parseBR(c.investimento);
+    const leads=Number(c.leads)||0;
+    if(inv>0) grupos[key].push({campanha:c.campanha,inv,leads,cpl:leads>0?inv/leads:Infinity});
+  });
+  Object.entries(grupos).forEach(([key,lista])=>{
+    if(lista.length<2) return;
+    const totalInv=lista.reduce((a,c)=>a+c.inv,0);
+    const maisCara=[...lista].sort((a,b)=>b.cpl-a.cpl)[0];
+    const maisBarata=[...lista].sort((a,b)=>a.cpl-b.cpl)[0];
+    const pctMaisCara=Math.round(maisCara.inv/totalInv*100);
+    if(maisCara.cpl!==Infinity&&maisBarata.cpl!==Infinity&&maisCara.cpl>maisBarata.cpl*3&&pctMaisCara>=40){
+      const [empresa]=key.split('|');
+      alerts.push({t:'wn',m:`${empresa}: campanha "${maisCara.campanha}" recebe ${pctMaisCara}% do orçamento mas tem CPL ${(maisCara.cpl/maisBarata.cpl).toFixed(1)}x maior que "${maisBarata.campanha}" — considerar realocar verba.`});
+    }
+  });
+
   const icons={ok:'✓',wn:'⚠',bd:'✕'};
-  document.getElementById('alertsBox').innerHTML=alerts.map(a=>`<div class="al a${a.t}"><span>${icons[a.t]}</span><span>${a.m}</span></div>`).join('');
+  if(alerts.length===0){
+    document.getElementById('alertsBox').innerHTML='<div class="al aok"><span>—</span><span>Sem alertas no momento — dados insuficientes para análise (preencha Vendas/Receita na aba KPIs).</span></div>';
+  } else {
+    document.getElementById('alertsBox').innerHTML=alerts.map(a=>`<div class="al a${a.t}"><span>${icons[a.t]}</span><span>${a.m}</span></div>`).join('');
+  }
 }
 
 loadAllData();
