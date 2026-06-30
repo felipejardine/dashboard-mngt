@@ -656,16 +656,20 @@ function renderFunnel(kpis,s){
 
   let fd=[{l:'Leads',v:lm}];
   if(isAreaIncrivel){
+    fd.push({l:'Leads Qualificados',v:sql});
     fd.push({l:'Visita Agendada',v:visitaAg});
     fd.push({l:'Visita Realizada',v:visitaReal});
     fd.push({l:'Análise de Crédito',v:analiseCred});
+    fd.push({l:'Em Reserva',v:opor});
+    fd.push({l:'Vendas',v:vendas});
+  } else {
+    fd.push({l:'SQL',v:sql});
+    fd.push({l:'Oportunidades',v:opor});
+    fd.push({l:'Negociações',v:neg});
+    fd.push({l:'Vendas',v:vendas});
   }
-  fd.push({l:'SQL',v:sql});
-  fd.push({l:'Oportunidades',v:opor});
-  fd.push({l:'Negociações',v:neg});
-  fd.push({l:'Vendas',v:vendas});
 
-  const fcBase=['#2563EB','#7C3AED','#A855F7','#C026D3','#059669','#0891B2','#D97706','#F59E0B'];
+  const fcBase=['#2563EB','#7C3AED','#A855F7','#C026D3','#DB2777','#0891B2','#F59E0B'];
   const fc=isAreaIncrivel?fcBase:['#2563EB','#059669','#0891B2','#D97706','#F59E0B'];
 
   document.getElementById('funnel').innerHTML=fd.map((f,i)=>{
