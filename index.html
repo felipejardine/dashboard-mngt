@@ -294,7 +294,7 @@ async function loadAllData(){
     const [k,ld,lm,plt,camp,fun]=await Promise.all([
       fetchCSV(SHEETS.kpis,2,true),
       fetchCSV(SHEETS.leads_diarios,0,false),
-      fetchCSV(SHEETS.leads_mensais,2,true),
+      fetchCSV(SHEETS.leads_mensais,2,false),
       fetchCSV(SHEETS.plataformas,2,true),
       fetchCSV(SHEETS.campanhas,2,true),
       fetchCSV(SHEETS.funil,2,true)
