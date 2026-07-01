@@ -97,13 +97,6 @@ tr:hover td{background:#F9FAFB}
 <div class="wr">
   <div class="fr">
     <select id="fPeriod" onchange="applyFilters()">
-      <option>Jul 2026</option>
-      <option>Jun 2026</option>
-      <option>Mai 2026</option>
-      <option>Abr 2026</option>
-      <option>Mar 2026</option>
-      <option>Fev 2026</option>
-      <option>Jan 2026</option>
     </select>
     <select id="fEmpresa" onchange="onEmpresaChange()">
       <option>Todas as empresas</option><option>Área Incrível</option><option>Mais Armazém</option><option>Centro Logístico</option>
@@ -399,11 +392,19 @@ async function loadAllData(){
 
     // Funil — lê dados reais da aba Funil
     if(fun){
-      const mesMap={'Jul 2026':'Jul/26','Jun 2026':'Jun/26','Mai 2026':'Mai/26','Abr 2026':'Abr/26','Mar 2026':'Mar/26','Fev 2026':'Fev/26','Jan 2026':'Jan/26'};
+      // mesMap gerado dinamicamente
+  const mesesAbrev=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+  const mesMap={};
+  const hoje2=new Date();
+  for(let i=0;i<24;i++){const d=new Date(hoje2.getFullYear(),hoje2.getMonth()-i,1);const k=mesesAbrev[d.getMonth()]+' '+d.getFullYear();const v=mesesAbrev[d.getMonth()]+'/'+String(d.getFullYear()).slice(2);mesMap[k]=v;}
       const empresasValidas=['Área Incrível','Mais Armazém','Centro Logístico'];
       const validFunil=fun.filter(r=>empresasValidas.includes((r['Empresa']||'').trim()));
       if(validFunil.length>0){
-        const periods=['Jul 2026','Jun 2026','Mai 2026','Abr 2026','Mar 2026','Fev 2026','Jan 2026'];
+        // Gera lista de períodos dinamicamente (mês atual + 12 meses anteriores)
+  const mesesAbrevKpi=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+  const hojeKpi=new Date();
+  const periods=[];
+  for(let i=0;i<13;i++){const d=new Date(hojeKpi.getFullYear(),hojeKpi.getMonth()-i,1);periods.push(mesesAbrevKpi[d.getMonth()]+' '+d.getFullYear());}
         periods.forEach(period=>{
           const mesCsv=mesMap[period];
           const rows=validFunil.filter(r=>(r['Mês']||'').trim()===mesCsv);
@@ -437,9 +438,17 @@ async function loadAllData(){
 
 function mergeKpis(rows){
   const empresasValidas=['Área Incrível','Mais Armazém','Centro Logístico'];
-  const mesMap={'Jul 2026':'Jul/26','Jun 2026':'Jun/26','Mai 2026':'Mai/26','Abr 2026':'Abr/26','Mar 2026':'Mar/26','Fev 2026':'Fev/26','Jan 2026':'Jan/26'};
+  // mesMap gerado dinamicamente
+  const mesesAbrev=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+  const mesMap={};
+  const hoje2=new Date();
+  for(let i=0;i<24;i++){const d=new Date(hoje2.getFullYear(),hoje2.getMonth()-i,1);const k=mesesAbrev[d.getMonth()]+' '+d.getFullYear();const v=mesesAbrev[d.getMonth()]+'/'+String(d.getFullYear()).slice(2);mesMap[k]=v;}
   const allRows=rows.filter(r=>empresasValidas.includes((r['Empresa']||r['empresa']||'').trim()));
-  const periods=['Jul 2026','Jun 2026','Mai 2026','Abr 2026','Mar 2026','Fev 2026','Jan 2026'];
+  // Gera lista de períodos dinamicamente (mês atual + 12 meses anteriores)
+  const mesesAbrevKpi=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+  const hojeKpi=new Date();
+  const periods=[];
+  for(let i=0;i<13;i++){const d=new Date(hojeKpi.getFullYear(),hojeKpi.getMonth()-i,1);periods.push(mesesAbrevKpi[d.getMonth()]+' '+d.getFullYear());}
   periods.forEach(period=>{
     const mesCsv=mesMap[period];
     const rowsDoMes=allRows.filter(r=>(r['Mês']||r['mes']||'').trim()===mesCsv);
@@ -464,7 +473,11 @@ function mergeKpis(rows){
 function onEmpresaChange(){
   const e=document.getElementById('fEmpresa').value;
   const s=getState();
-  const mesMap={'Jul 2026':'Jul/26','Jun 2026':'Jun/26','Mai 2026':'Mai/26','Abr 2026':'Abr/26','Mar 2026':'Mar/26','Fev 2026':'Fev/26','Jan 2026':'Jan/26'};
+  // mesMap gerado dinamicamente
+  const mesesAbrev=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+  const mesMap={};
+  const hoje2=new Date();
+  for(let i=0;i<24;i++){const d=new Date(hoje2.getFullYear(),hoje2.getMonth()-i,1);const k=mesesAbrev[d.getMonth()]+' '+d.getFullYear();const v=mesesAbrev[d.getMonth()]+'/'+String(d.getFullYear()).slice(2);mesMap[k]=v;}
   const mesCsv=mesMap[s.period]||'';
   const sel=document.getElementById('fCamp');
   const prev=sel.value;
@@ -550,7 +563,11 @@ function renderKPIs(kpis,s){
 
   // Dados do mês anterior para comparar
   const s2=getState();
-  const prevMap2={'Jul 2026':'Jun 2026','Jun 2026':'Mai 2026','Mai 2026':'Abr 2026','Abr 2026':'Mar 2026','Mar 2026':'Fev 2026','Fev 2026':'Jan 2026','Jan 2026':'Jan 2026'};
+  // prevMap gerado dinamicamente
+  const mesesAbrevPrev=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+  const hojePrev=new Date();
+  const prevMap2={};
+  for(let i=0;i<13;i++){const d=new Date(hojePrev.getFullYear(),hojePrev.getMonth()-i,1);const curr=mesesAbrevPrev[d.getMonth()]+' '+d.getFullYear();const dp=new Date(hojePrev.getFullYear(),hojePrev.getMonth()-i-1,1);const prev=mesesAbrevPrev[dp.getMonth()]+' '+dp.getFullYear();prevMap2[curr]=prev;}
   const prevPeriod2=prevMap2[s2.period]||'Mai 2026';
   const prevKpis2=(DB.kpis[prevPeriod2]||[]).filter(r=>s2.empresa==='Todas as empresas'||r.empresa===s2.empresa);
   const prevInv2=prevKpis2.reduce((a,r)=>a+Number(r.investimento),0);
@@ -791,6 +808,21 @@ function renderAlerts(kpis,camps){
     document.getElementById('alertsBox').innerHTML=alerts.map(a=>`<div class="al a${a.t}"><span>${icons[a.t]}</span><span>${a.m}</span></div>`).join('');
   }
 }
+
+// Gera opções de período automaticamente (mês atual + 12 meses anteriores)
+(function gerarPeriodos(){
+  const meses=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+  const sel=document.getElementById('fPeriod');
+  const hoje=new Date();
+  for(let i=0;i<13;i++){
+    const d=new Date(hoje.getFullYear(),hoje.getMonth()-i,1);
+    const label=meses[d.getMonth()]+' '+d.getFullYear();
+    const opt=document.createElement('option');
+    opt.value=label;
+    opt.textContent=label;
+    sel.appendChild(opt);
+  }
+})();
 
 loadAllData();
 </script>
