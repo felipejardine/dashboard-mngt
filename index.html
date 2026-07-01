@@ -84,7 +84,7 @@ tr:hover td{background:#F9FAFB}
   <div class="hrow">
     <div>
       <p class="ey">Grupo MNGT</p>
-      <h1 class="h1">Dashboard de Marketing</h1>
+      <h1 class="h1">Dashboard Executivo de Performance Digital</h1>
       <p class="hs" id="subTitle">Área Incrível · Mais Armazém · Centro Logístico</p>
     </div>
     <div style="display:flex;align-items:center;gap:8px">
@@ -582,7 +582,7 @@ function renderKPIs(kpis,s){
     {l:'Investimento',v:fmtK(inv),s:varSeta(inv,prevInv2,true),cl:''},
     {l:'CPL médio',v:fmtBRL(cpl),s:varSeta(cpl,prevCpl2,false),cl:''},
     {l:'CAC médio',v:cac>0?fmtBRL(cac):'—',s:cac>0?varSeta(cac,prevCac2,false):'<span class="mu">Sem vendas</span>',cl:''},
-    {l:'ROI médio',v:roi>0?roi.toFixed(1)+'x':'—',s:roi>0?varSeta(roi,prevRoi2,true):'<span class="mu">Sem receita</span>',cl:''},
+    {l:'ROI médio',v:roi>0?roi.toFixed(2)+'x':'—',s:roi>0?varSeta(roi,prevRoi2,true):'<span class="mu">Sem receita</span>',cl:''},
     {l:'Tx. conversão',v:tx.toFixed(1)+'%',s:'<span class="mu">Lead → cliente</span>',cl:''},
     {l:'Pipeline',v:pip>0?fmtK(pip):fmtK(rec),s:pip>0?'<span class="mu">Em negociação</span>':'<span class="mu">Receita acumulada</span>',cl:'hi'},
   ].map(k=>'<div class="kc '+k.cl+'"><p class="kl">'+k.l+'</p><p class="kv">'+k.v+'</p><p class="ks">'+k.s+'</p></div>').join('');
@@ -717,7 +717,7 @@ function renderEmpresaTable(kpis,s){
     const mp=r.meta_mes>0?Math.round(Number(r.leads_mes)/Number(r.meta_mes)*100):0;
     const bc=mp>=100?'bok':mp>=80?'bwn':'bbd';
     const ic=mp>=100?'🟢':mp>=80?'🟡':'🔴';
-    return`<tr><td style="font-weight:600">${r.empresa}</td><td>${Number(r.leads_mes).toLocaleString('pt-BR')}</td><td style="color:#047857;font-weight:600">${sql}</td><td>${fmtK(r.investimento)}</td><td>${fmtBRL(r.cpl)}</td><td>${fmtBRL(r.cac)}</td><td>${vd}</td><td>${fmtK(r.receita)}</td><td>R$${Number(r.roi).toFixed(1)}</td><td>${Number(r.taxa).toFixed(1)}%</td><td><span class="bk ${bc}">${ic} ${mp}%</span></td></tr>`;
+    return`<tr><td style="font-weight:600">${r.empresa}</td><td>${Number(r.leads_mes).toLocaleString('pt-BR')}</td><td style="color:#047857;font-weight:600">${sql}</td><td>${fmtBRL(r.investimento)}</td><td>${fmtBRL(r.cpl)}</td><td>${r.cac>0?fmtBRL(r.cac):'—'}</td><td>${vd}</td><td>${fmtBRL(r.receita)}</td><td>${r.roi>0?Number(r.roi).toFixed(2)+'x':'—'}</td><td>${Number(r.taxa).toFixed(1)}%</td><td><span class="bk ${bc}">${ic} ${mp}%</span></td></tr>`;
   });
   if(kpis.length>1){
     const tl=kpis.reduce((a,r)=>a+Number(r.leads_mes),0);
