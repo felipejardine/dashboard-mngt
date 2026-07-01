@@ -84,7 +84,7 @@ tr:hover td{background:#F9FAFB}
   <div class="hrow">
     <div>
       <p class="ey">Grupo MNGT</p>
-      <h1 class="h1">Dashboard Comercial</h1>
+      <h1 class="h1">Dashboard de Marketing</h1>
       <p class="hs" id="subTitle">Área Incrível · Mais Armazém · Centro Logístico</p>
     </div>
     <div style="display:flex;align-items:center;gap:8px">
@@ -333,7 +333,7 @@ async function loadAllData(){
     }
 
     if(lm){
-      const validMonths=lm.filter(r=>{const m=r['Mês']||r['mes']||'';return m.trim().length>0&&!m.includes('Leads')&&!m.includes('linha');});
+      const validMonths=lm.filter(r=>{const m=(r['Mês']||r['mes']||'').trim();return /^[A-Za-zÀ-ú]{3}\/\d{2}$/.test(m);});
       if(validMonths.length>0){
         DB.leads_mensais.labels=validMonths.map(r=>(r['Mês']||r['mes']||'').trim());
         DB.leads_mensais['Área Incrível']=validMonths.map(r=>Number(r['Área Incrível']||r['area_incrivel'])||0);
@@ -460,7 +460,7 @@ function onEmpresaChange(){
 
 function applyFilters(){
   const s=getState();
-  const kpis=(DB.kpis[s.period]||DB.kpis['Jun 2026']).filter(r=>s.empresa==='Todas as empresas'||r.empresa===s.empresa);
+  const kpis=(DB.kpis[s.period]||[]).filter(r=>s.empresa==='Todas as empresas'||r.empresa===s.empresa);
   // Filtra plataformas pelo período
   const mesMap2={'Jul 2026':'Jul/26','Jun 2026':'Jun/26','Mai 2026':'Mai/26','Abr 2026':'Abr/26','Mar 2026':'Mar/26','Fev 2026':'Fev/26','Jan 2026':'Jan/26'};
   const mesCsvPlat=mesMap2[s.period]||'';
