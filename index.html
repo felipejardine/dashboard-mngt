@@ -84,7 +84,7 @@ tr:hover td{background:#F9FAFB}
   <div class="hrow">
     <div>
       <p class="ey">Grupo MNGT</p>
-      <h1 class="h1">Dashboard de Marketing</h1>
+      <h1 class="h1">Dashboard Comercial</h1>
       <p class="hs" id="subTitle">Área Incrível · Mais Armazém · Centro Logístico</p>
     </div>
     <div style="display:flex;align-items:center;gap:8px">
@@ -386,7 +386,7 @@ async function loadAllData(){
       const empresasValidas=['Área Incrível','Mais Armazém','Centro Logístico'];
       const validFunil=fun.filter(r=>empresasValidas.includes((r['Empresa']||'').trim()));
       if(validFunil.length>0){
-        const periods=['Jun 2026','Mai 2026','Abr 2026','Mar 2026','Fev 2026','Jan 2026'];
+        const periods=['Jul 2026','Jun 2026','Mai 2026','Abr 2026','Mar 2026','Fev 2026','Jan 2026'];
         periods.forEach(period=>{
           const mesCsv=mesMap[period];
           const rows=validFunil.filter(r=>(r['Mês']||'').trim()===mesCsv);
@@ -422,7 +422,7 @@ function mergeKpis(rows){
   const empresasValidas=['Área Incrível','Mais Armazém','Centro Logístico'];
   const mesMap={'Jul 2026':'Jul/26','Jun 2026':'Jun/26','Mai 2026':'Mai/26','Abr 2026':'Abr/26','Mar 2026':'Mar/26','Fev 2026':'Fev/26','Jan 2026':'Jan/26'};
   const allRows=rows.filter(r=>empresasValidas.includes((r['Empresa']||r['empresa']||'').trim()));
-  const periods=['Jun 2026','Mai 2026','Abr 2026','Mar 2026','Fev 2026','Jan 2026'];
+  const periods=['Jul 2026','Jun 2026','Mai 2026','Abr 2026','Mar 2026','Fev 2026','Jan 2026'];
   periods.forEach(period=>{
     const mesCsv=mesMap[period];
     const rowsDoMes=allRows.filter(r=>(r['Mês']||r['mes']||'').trim()===mesCsv);
