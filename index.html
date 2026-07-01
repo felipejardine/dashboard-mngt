@@ -84,7 +84,7 @@ tr:hover td{background:#F9FAFB}
   <div class="hrow">
     <div>
       <p class="ey">Grupo MNGT</p>
-      <h1 class="h1">Dashboard Executivo de Performance Digital</h1>
+      <h1 class="h1">Dashboard de Marketing</h1>
       <p class="hs" id="subTitle">Área Incrível · Mais Armazém · Centro Logístico</p>
     </div>
     <div style="display:flex;align-items:center;gap:8px">
@@ -578,7 +578,7 @@ function renderKPIs(kpis,s){
   document.getElementById('kpiGrid').innerHTML=[
     {l:'Leads hoje',v:tl,s:leadsHojeSeta,cl:''},
     {l:'Leads do mês',v:lm,s:'Meta '+meta+' · <b style="color:#111827">'+mp+'%</b>',cl:''},
-    {l:'SQL',v:sql,s:'<span style="color:#10B981">'+sqlPct+'% dos leads</span>',cl:'sql'},
+    {l:'Qualificados',v:sql,s:'<span style="color:#10B981">'+sqlPct+'% dos leads</span>',cl:'sql'},
     {l:'Investimento',v:fmtK(inv),s:varSeta(inv,prevInv2,true),cl:''},
     {l:'CPL médio',v:fmtBRL(cpl),s:varSeta(cpl,prevCpl2,false),cl:''},
     {l:'CAC médio',v:cac>0?fmtBRL(cac):'—',s:cac>0?varSeta(cac,prevCac2,false):'<span class="mu">Sem vendas</span>',cl:''},
