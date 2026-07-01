@@ -84,7 +84,7 @@ tr:hover td{background:#F9FAFB}
   <div class="hrow">
     <div>
       <p class="ey">Grupo MNGT</p>
-      <h1 class="h1">Dashboard Executivo de Performance Digital</h1>
+      <h1 class="h1">Dashboard de Marketing</h1>
       <p class="hs" id="subTitle">Área Incrível · Mais Armazém · Centro Logístico</p>
     </div>
     <div style="display:flex;align-items:center;gap:8px">
@@ -97,6 +97,7 @@ tr:hover td{background:#F9FAFB}
 <div class="wr">
   <div class="fr">
     <select id="fPeriod" onchange="applyFilters()">
+      <option>Jul 2026</option>
       <option>Jun 2026</option>
       <option>Mai 2026</option>
       <option>Abr 2026</option>
@@ -381,7 +382,7 @@ async function loadAllData(){
 
     // Funil — lê dados reais da aba Funil
     if(fun){
-      const mesMap={'Jun 2026':'Jun/26','Mai 2026':'Mai/26','Abr 2026':'Abr/26','Mar 2026':'Mar/26','Fev 2026':'Fev/26','Jan 2026':'Jan/26'};
+      const mesMap={'Jul 2026':'Jul/26','Jun 2026':'Jun/26','Mai 2026':'Mai/26','Abr 2026':'Abr/26','Mar 2026':'Mar/26','Fev 2026':'Fev/26','Jan 2026':'Jan/26'};
       const empresasValidas=['Área Incrível','Mais Armazém','Centro Logístico'];
       const validFunil=fun.filter(r=>empresasValidas.includes((r['Empresa']||'').trim()));
       if(validFunil.length>0){
@@ -419,7 +420,7 @@ async function loadAllData(){
 
 function mergeKpis(rows){
   const empresasValidas=['Área Incrível','Mais Armazém','Centro Logístico'];
-  const mesMap={'Jun 2026':'Jun/26','Mai 2026':'Mai/26','Abr 2026':'Abr/26','Mar 2026':'Mar/26','Fev 2026':'Fev/26','Jan 2026':'Jan/26'};
+  const mesMap={'Jul 2026':'Jul/26','Jun 2026':'Jun/26','Mai 2026':'Mai/26','Abr 2026':'Abr/26','Mar 2026':'Mar/26','Fev 2026':'Fev/26','Jan 2026':'Jan/26'};
   const allRows=rows.filter(r=>empresasValidas.includes((r['Empresa']||r['empresa']||'').trim()));
   const periods=['Jun 2026','Mai 2026','Abr 2026','Mar 2026','Fev 2026','Jan 2026'];
   periods.forEach(period=>{
@@ -446,7 +447,7 @@ function mergeKpis(rows){
 function onEmpresaChange(){
   const e=document.getElementById('fEmpresa').value;
   const s=getState();
-  const mesMap={'Jun 2026':'Jun/26','Mai 2026':'Mai/26','Abr 2026':'Abr/26','Mar 2026':'Mar/26','Fev 2026':'Fev/26','Jan 2026':'Jan/26'};
+  const mesMap={'Jul 2026':'Jul/26','Jun 2026':'Jun/26','Mai 2026':'Mai/26','Abr 2026':'Abr/26','Mar 2026':'Mar/26','Fev 2026':'Fev/26','Jan 2026':'Jan/26'};
   const mesCsv=mesMap[s.period]||'';
   const sel=document.getElementById('fCamp');
   const prev=sel.value;
@@ -461,7 +462,7 @@ function applyFilters(){
   const s=getState();
   const kpis=(DB.kpis[s.period]||DB.kpis['Jun 2026']).filter(r=>s.empresa==='Todas as empresas'||r.empresa===s.empresa);
   // Filtra plataformas pelo período
-  const mesMap2={'Jun 2026':'Jun/26','Mai 2026':'Mai/26','Abr 2026':'Abr/26','Mar 2026':'Mar/26','Fev 2026':'Fev/26','Jan 2026':'Jan/26'};
+  const mesMap2={'Jul 2026':'Jul/26','Jun 2026':'Jun/26','Mai 2026':'Mai/26','Abr 2026':'Abr/26','Mar 2026':'Mar/26','Fev 2026':'Fev/26','Jan 2026':'Jan/26'};
   const mesCsvPlat=mesMap2[s.period]||'';
   const platSource=DB.plataformasAll||[];
   const platFiltrado=platSource
@@ -475,7 +476,7 @@ function applyFilters(){
   const platDataAll=Object.entries(platMap).map(([p,leads])=>({p,leads,cor:CORES[p]||'#9CA3AF'})).sort((a,b)=>b.leads-a.leads);
   const platData=platDataAll.filter(r=>s.plat==='Todas as plataformas'||r.p===s.plat);
   // Filtra campanhas pelo período selecionado
-const mesMap={'Jun 2026':'Jun/26','Mai 2026':'Mai/26','Abr 2026':'Abr/26','Mar 2026':'Mar/26','Fev 2026':'Fev/26','Jan 2026':'Jan/26'};
+const mesMap={'Jul 2026':'Jul/26','Jun 2026':'Jun/26','Mai 2026':'Mai/26','Abr 2026':'Abr/26','Mar 2026':'Mar/26','Fev 2026':'Fev/26','Jan 2026':'Jan/26'};
 const mesCsv=mesMap[s.period]||'';
 const campBase=(DB.campanhasAll||DB.campanhas).filter(c=>!c.mes||c.mes===mesCsv||mesCsv==='');
 const campData=campBase.filter(c=>(s.empresa==='Todas as empresas'||c.empresa===s.empresa)&&(s.plat==='Todas as plataformas'||c.plataforma===s.plat)&&(s.camp==='Todas as campanhas'||c.campanha===s.camp));
@@ -532,7 +533,7 @@ function renderKPIs(kpis,s){
 
   // Dados do mês anterior para comparar
   const s2=getState();
-  const prevMap2={'Jun 2026':'Mai 2026','Mai 2026':'Abr 2026','Abr 2026':'Mar 2026','Mar 2026':'Fev 2026','Fev 2026':'Jan 2026','Jan 2026':'Jan 2026'};
+  const prevMap2={'Jul 2026':'Jun 2026','Jun 2026':'Mai 2026','Mai 2026':'Abr 2026','Abr 2026':'Mar 2026','Mar 2026':'Fev 2026','Fev 2026':'Jan 2026','Jan 2026':'Jan 2026'};
   const prevPeriod2=prevMap2[s2.period]||'Mai 2026';
   const prevKpis2=(DB.kpis[prevPeriod2]||[]).filter(r=>s2.empresa==='Todas as empresas'||r.empresa===s2.empresa);
   const prevInv2=prevKpis2.reduce((a,r)=>a+Number(r.investimento),0);
@@ -566,12 +567,12 @@ function renderKPIs(kpis,s){
     {l:'CAC médio',v:cac>0?fmtBRL(cac):'—',s:cac>0?varSeta(cac,prevCac2,false):'<span class="mu">Sem vendas</span>',cl:''},
     {l:'ROI médio',v:roi>0?roi.toFixed(1)+'x':'—',s:roi>0?varSeta(roi,prevRoi2,true):'<span class="mu">Sem receita</span>',cl:''},
     {l:'Tx. conversão',v:tx.toFixed(1)+'%',s:'<span class="mu">Lead → cliente</span>',cl:''},
-    {l:'Pipeline',v:fmtK(pip),s:'<span class="mu">Em negociação</span>',cl:'hi'},
+    {l:'Pipeline',v:pip>0?fmtK(pip):fmtK(rec),s:pip>0?'<span class="mu">Em negociação</span>':'<span class="mu">Receita acumulada</span>',cl:'hi'},
   ].map(k=>'<div class="kc '+k.cl+'"><p class="kl">'+k.l+'</p><p class="kv">'+k.v+'</p><p class="ks">'+k.s+'</p></div>').join('');
 }
 
 function renderCompare(kpis,s){
-  const prevMap={'Jun 2026':'Mai 2026','Mai 2026':'Abr 2026','Abr 2026':'Mar 2026','Mar 2026':'Fev 2026','Fev 2026':'Jan 2026','Jan 2026':'Jan 2026'};
+  const prevMap={'Jul 2026':'Jun 2026','Jun 2026':'Mai 2026','Mai 2026':'Abr 2026','Abr 2026':'Mar 2026','Mar 2026':'Fev 2026','Fev 2026':'Jan 2026','Jan 2026':'Jan 2026'};
   const prevPeriod=prevMap[s.period]||'Mai 2026';
   const prev=(DB.kpis[prevPeriod]||DB.kpis['Jun 2026']).filter(r=>s.empresa==='Todas as empresas'||r.empresa===s.empresa);
   const calc=arr=>({lm:arr.reduce((a,r)=>a+Number(r.leads_mes),0),inv:arr.reduce((a,r)=>a+Number(r.investimento),0),rec:arr.reduce((a,r)=>a+Number(r.receita),0),vd:arr.reduce((a,r)=>a+Math.round(Number(r.leads_mes)*Number(r.taxa)/100),0)});
