@@ -423,6 +423,8 @@ async function loadAllData(){
               visita_agendada:Number(r['Visita Agendada'])||0,
               visita_realizada:Number(r['Visita Realizada'])||0,
               analise_credito:Number(r['Análise de Crédito']||r['Analise de Credito'])||0,
+              pre_analise:Number(r['Pré Análise']||r['Pre Analise'])||0,
+              qualificado_tr:Number(r['Qualificado'])||0,
             }));
           }
         });
@@ -493,19 +495,14 @@ function onEmpresaChange(){
 
 function applyFilters(){
   const s=getState();
-  // Área Incrível inclui Terrenistas quando selecionado
-  const kpis=(DB.kpis[s.period]||[]).filter(r=>{
-    if(s.empresa==='Todas as empresas') return true;
-    if(s.empresa==='Área Incrível') return r.empresa==='Área Incrível'||r.empresa==='Terrenistas';
-    return r.empresa===s.empresa;
-  });
+  const kpis=(DB.kpis[s.period]||[]).filter(r=>s.empresa==='Todas as empresas'||r.empresa===s.empresa);
   // Filtra plataformas pelo período
   const mesMap2={'Jul 2026':'Jul/26','Jun 2026':'Jun/26','Mai 2026':'Mai/26','Abr 2026':'Abr/26','Mar 2026':'Mar/26','Fev 2026':'Fev/26','Jan 2026':'Jan/26'};
   const mesCsvPlat=mesMap2[s.period]||'';
   const platSource=DB.plataformasAll||[];
   const platFiltrado=platSource
     .filter(r=>!r.mes||r.mes===mesCsvPlat)
-    .filter(r=>s.empresa==='Todas as empresas'||!r.empresa||(s.empresa==='Área Incrível'&&(r.empresa==='Área Incrível'||r.empresa==='Terrenistas'))||r.empresa===s.empresa)
+    .filter(r=>s.empresa==='Todas as empresas'||!r.empresa||r.empresa===s.empresa)
     .filter(r=>r.leads>0);
   // Agrupa por plataforma somando leads
   const platMap={};
@@ -538,7 +535,7 @@ const campData=campBase.filter(c=>(s.empresa==='Todas as empresas'||c.empresa===
 
 function getFunilData(s){
   if(DB.funil&&DB.funil[s.period]){
-    return DB.funil[s.period].filter(r=>{if(s.empresa==='Todas as empresas') return true; if(s.empresa==='Área Incrível') return r.empresa==='Área Incrível'||r.empresa==='Terrenistas'; return r.empresa===s.empresa;});
+    return DB.funil[s.period].filter(r=>s.empresa==='Todas as empresas'||r.empresa===s.empresa);
   }
   return null;
 }
@@ -654,14 +651,14 @@ function renderCompare(kpis,s){
 function renderDaily(s){
   destroyChart('daily');
   const dd=DB.leads_diarios[s.period]||{'Área Incrível':[],'Mais Armazém':[],'Centro Logístico':[],meta:15};
-  const empresas=s.empresa==='Todas as empresas'?['Área Incrível','Mais Armazém','Centro Logístico']:s.empresa==='Área Incrível'?['Área Incrível','Terrenistas']:[s.empresa];
+  const empresas=s.empresa==='Todas as empresas'?['Área Incrível','Terrenistas','Mais Armazém','Centro Logístico']:[s.empresa];
   document.getElementById('lgDaily').innerHTML=empresas.map(e=>`<span><span class="ld" style="background:${COLORS[e]}"></span>${e}</span>`).join('')+`<span><span class="ld" style="background:transparent;border:1px dashed #D1D5DB"></span>Meta</span>`;
   charts.daily=new Chart(document.getElementById('c1'),{type:'line',data:{labels:Array.from({length:31},(_,i)=>i+1),datasets:[...empresas.map(e=>({label:e,data:dd[e]||[],borderColor:COLORS[e],backgroundColor:COLORS[e]+'12',tension:.35,pointRadius:0,borderWidth:2,fill:true})),{label:'Meta',data:new Array(31).fill(dd.meta||15),borderColor:'#D1D5DB',borderDash:[4,4],pointRadius:0,borderWidth:1,fill:false}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{mode:'index',intersect:false}},scales:{x:{ticks:{color:tc,font:{size:10},maxTicksLimit:10},grid:{color:gc}},y:{ticks:{color:tc,font:{size:10}},grid:{color:gc},beginAtZero:true}}}});
 }
 
 function renderMonthly(s){
   destroyChart('monthly');
-  const empresas=s.empresa==='Todas as empresas'?['Área Incrível','Mais Armazém','Centro Logístico']:s.empresa==='Área Incrível'?['Área Incrível','Terrenistas']:[s.empresa];
+  const empresas=s.empresa==='Todas as empresas'?['Área Incrível','Terrenistas','Mais Armazém','Centro Logístico']:[s.empresa];
   document.getElementById('lgMonthly').innerHTML=empresas.map(e=>`<span><span class="ld" style="background:${COLORS[e]}"></span>${e}</span>`).join('');
   charts.monthly=new Chart(document.getElementById('c2'),{type:'bar',data:{labels:DB.leads_mensais.labels,datasets:empresas.map(e=>({label:e,data:DB.leads_mensais[e],backgroundColor:COLORS[e],borderRadius:2}))},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:tc,font:{size:9},autoSkip:false,maxRotation:45},grid:{display:false}},y:{ticks:{color:tc,font:{size:10}},grid:{color:gc},beginAtZero:true}}}});
 }
@@ -697,8 +694,12 @@ function renderFunnel(kpis,s){
     visitaAg=0;visitaReal=0;analiseCred=0;
   }
 
-  // Etapas exclusivas da Área Incrível — só aparecem quando esse filtro está ativo
   const isAreaIncrivel=s.empresa==='Área Incrível';
+  const isTerrenistas=s.empresa==='Terrenistas';
+
+  // Campos exclusivos Terrenistas
+  const preAnalise=funRows?funRows.reduce((a,r)=>a+(r.pre_analise||0),0):0;
+  const qualificadoTr=funRows?funRows.reduce((a,r)=>a+(r.qualificado_tr||0),0):0;
 
   let fd=[{l:'Leads',v:lm}];
   if(isAreaIncrivel){
@@ -708,6 +709,10 @@ function renderFunnel(kpis,s){
     fd.push({l:'Análise de Crédito',v:analiseCred});
     fd.push({l:'Em Reserva',v:opor});
     fd.push({l:'Vendas',v:vendas});
+  } else if(isTerrenistas){
+    fd.push({l:'Pré Análise',v:preAnalise});
+    fd.push({l:'Qualificado',v:qualificadoTr});
+    fd.push({l:'Em Negociação',v:neg});
   } else {
     fd.push({l:'SQL',v:sql});
     fd.push({l:'Oportunidades',v:opor});
@@ -716,7 +721,8 @@ function renderFunnel(kpis,s){
   }
 
   const fcBase=['#2563EB','#7C3AED','#A855F7','#C026D3','#DB2777','#0891B2','#F59E0B'];
-  const fc=isAreaIncrivel?fcBase:['#2563EB','#059669','#0891B2','#D97706','#F59E0B'];
+  const fcTr=['#7C3AED','#A855F7','#C026D3','#DB2777'];
+  const fc=isAreaIncrivel?fcBase:isTerrenistas?fcTr:['#2563EB','#059669','#0891B2','#D97706','#F59E0B'];
 
   document.getElementById('funnel').innerHTML=fd.map((f,i)=>{
     const pw=Math.max(5,Math.round(f.v/Math.max(fd[0].v,1)*100));
