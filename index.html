@@ -516,8 +516,6 @@ function mergeKpis(rows){
 
 function onEmpresaChange(){
   const s=getState();
-  const empresas=getSelectedEmpresas(s.empresa);
-  // mesMap gerado dinamicamente
   const mesesAbrev=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
   const mesMap={};
   const hoje2=new Date();
@@ -526,7 +524,8 @@ function onEmpresaChange(){
   const sel=document.getElementById('fCamp');
   const prev=sel.value;
   sel.innerHTML='<option>Todas as campanhas</option>';
-  const fonte=(DB.campanhasAll||DB.campanhas).filter(c=>(!c.mes||c.mes===mesCsv)&&(e==='Todas as empresas'||c.empresa===e));
+  const selectedEmpresas=getSelectedEmpresas(s.empresa);
+  const fonte=(DB.campanhasAll||DB.campanhas).filter(c=>(!c.mes||c.mes===mesCsv)&&selectedEmpresas.includes(c.empresa));
   [...new Set(fonte.map(c=>c.campanha))].forEach(c=>{const o=document.createElement('option');o.value=c;o.textContent=c;sel.appendChild(o);});
   if([...sel.options].some(o=>o.value===prev))sel.value=prev;
   applyFilters();
