@@ -84,7 +84,7 @@ tr:hover td{background:#F9FAFB}
   <div class="hrow">
     <div>
       <p class="ey">Grupo MNGT</p>
-      <h1 class="h1">Dashboard de Marketing</h1>
+      <h1 class="h1">Dashboard Executivo de Performance Digital</h1>
       <p class="hs" id="subTitle">Área Incrível · Mais Armazém · Centro Logístico</p>
     </div>
     <div style="display:flex;align-items:center;gap:8px">
@@ -169,7 +169,7 @@ tr:hover td{background:#F9FAFB}
     <tbody id="empresaTb"></tbody>
   </table></div></div>
 
-  <p class="st">Performance por campanha</p>
+  <div id="campAlertsSection"><p class="st">Performance por campanha</p>
   <div class="cc"><div class="tw"><table style="min-width:700px">
     <thead><tr><th>Campanha</th><th>Empresa</th><th>Plataforma</th><th>Investimento</th><th>Impressões</th><th>Cliques</th><th>CTR</th><th>Leads</th><th>CPL</th><th>Vendas</th><th>ROI</th></tr></thead>
     <tbody id="campTb"></tbody>
@@ -178,7 +178,7 @@ tr:hover td{background:#F9FAFB}
   <p class="st">Alertas inteligentes</p>
   <div id="alertsBox"></div>
 </div>
-</div>
+</div></div>
 
 <script>
 const SHEETS = {
@@ -518,6 +518,9 @@ const campData=campBase.filter(c=>(s.empresa==='Todas as empresas'||c.empresa===
   [...new Set(fonteCamp.map(c=>c.campanha))].forEach(c=>{const o=document.createElement('option');o.value=c;o.textContent=c;selCamp.appendChild(o);});
   if([...selCamp.options].some(o=>o.value===prevCamp))selCamp.value=prevCamp;
 
+  // Esconde Performance por Campanha e Alertas para Área Incrível
+  const campSection=document.getElementById('campAlertsSection');
+  if(campSection) campSection.style.display=s.empresa==='Área Incrível'?'none':'block';
   document.getElementById('subTitle').textContent=s.empresa==='Todas as empresas'?'Área Incrível · Mais Armazém · Centro Logístico':s.empresa;
   document.getElementById('periodLabel').textContent=s.period;
   renderKPIs(kpis,s);renderCompare(kpis,s);renderDaily(s);renderMonthly(s);
