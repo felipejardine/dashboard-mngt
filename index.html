@@ -304,20 +304,23 @@ async function loadAllData(){
         validDays.forEach(r=>{
           const data=(r['Data']||r['data']||'').trim();
           const dia=parseInt(data.split('/')[0],10);
-          if(!porDia[dia]) porDia[dia]={ai:0,ma:0,cl:0};
+          if(!porDia[dia]) porDia[dia]={ai:0,tr:0,ma:0,cl:0};
           porDia[dia].ai+=Number(r['Área Incrível']||r['area_incrivel'])||0;
+          porDia[dia].tr+=Number(r['Terrenistas']||r['terrenistas'])||0;
           porDia[dia].ma+=Number(r['Mais Armazém']||r['mais_armazem'])||0;
           porDia[dia].cl+=Number(r['Centro Logístico']||r['centro_logistico'])||0;
         });
         // Gera array de 31 posições (dia 1 a 31), preenchendo com 0 onde não há dado
-        const arrAI=[],arrMA=[],arrCL=[];
+        const arrAI=[],arrTR=[],arrMA=[],arrCL=[];
         for(let d=1;d<=31;d++){
           arrAI.push(porDia[d]?porDia[d].ai:0);
+          arrTR.push(porDia[d]?porDia[d].tr:0);
           arrMA.push(porDia[d]?porDia[d].ma:0);
           arrCL.push(porDia[d]?porDia[d].cl:0);
         }
         DB.leads_diarios[s.period]={
           'Área Incrível': arrAI,
+          'Terrenistas': arrTR,
           'Mais Armazém':  arrMA,
           'Centro Logístico': arrCL,
           meta: Number(validDays[0]['Meta Diária']||validDays[0]['meta'])||15,
