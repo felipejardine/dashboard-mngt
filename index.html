@@ -99,7 +99,7 @@ tr:hover td{background:#F9FAFB}
     <select id="fPeriod" onchange="applyFilters()">
     </select>
     <select id="fEmpresa" onchange="onEmpresaChange()">
-      <option>Todas as empresas</option><option>Área Incrível</option><option>Mais Armazém</option><option>Centro Logístico</option>
+      <option>Todas as empresas</option><option>Área Incrível</option><option>Terrenistas</option><option>Mais Armazém</option><option>Centro Logístico</option>
     </select>
     <select id="fPlat" onchange="applyFilters()">
       <option>Todas as plataformas</option><option>Meta Ads</option><option>Google Ads</option><option>LinkedIn Ads</option><option>TikTok Ads</option><option>WhatsApp</option><option>Orgânico</option><option>Indicação</option>
@@ -191,7 +191,7 @@ const SHEETS = {
 };
 
 const tc='#9CA3AF',gc='rgba(0,0,0,0.05)';
-const COLORS={'Área Incrível':'#2563EB','Mais Armazém':'#059669','Centro Logístico':'#D97706'};
+const COLORS={'Área Incrível':'#2563EB','Terrenistas':'#7C3AED','Mais Armazém':'#059669','Centro Logístico':'#D97706'};
 const MQL_RATE=0.70,SQL_RATE=0.26;
 
 const DEMO={
@@ -397,7 +397,7 @@ async function loadAllData(){
   const mesMap={};
   const hoje2=new Date();
   for(let i=0;i<24;i++){const d=new Date(hoje2.getFullYear(),hoje2.getMonth()-i,1);const k=mesesAbrev[d.getMonth()]+' '+d.getFullYear();const v=mesesAbrev[d.getMonth()]+'/'+String(d.getFullYear()).slice(2);mesMap[k]=v;}
-      const empresasValidas=['Área Incrível','Mais Armazém','Centro Logístico'];
+      const empresasValidas=['Área Incrível','Mais Armazém','Centro Logístico','Terrenistas'];
       const validFunil=fun.filter(r=>empresasValidas.includes((r['Empresa']||'').trim()));
       if(validFunil.length>0){
         // Gera lista de períodos dinamicamente (mês atual + 12 meses anteriores)
@@ -437,7 +437,7 @@ async function loadAllData(){
 }
 
 function mergeKpis(rows){
-  const empresasValidas=['Área Incrível','Mais Armazém','Centro Logístico'];
+  const empresasValidas=['Área Incrível','Mais Armazém','Centro Logístico','Terrenistas'];
   // mesMap gerado dinamicamente
   const mesesAbrev=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
   const mesMap={};
@@ -490,14 +490,19 @@ function onEmpresaChange(){
 
 function applyFilters(){
   const s=getState();
-  const kpis=(DB.kpis[s.period]||[]).filter(r=>s.empresa==='Todas as empresas'||r.empresa===s.empresa);
+  // Área Incrível inclui Terrenistas quando selecionado
+  const kpis=(DB.kpis[s.period]||[]).filter(r=>{
+    if(s.empresa==='Todas as empresas') return true;
+    if(s.empresa==='Área Incrível') return r.empresa==='Área Incrível'||r.empresa==='Terrenistas';
+    return r.empresa===s.empresa;
+  });
   // Filtra plataformas pelo período
   const mesMap2={'Jul 2026':'Jul/26','Jun 2026':'Jun/26','Mai 2026':'Mai/26','Abr 2026':'Abr/26','Mar 2026':'Mar/26','Fev 2026':'Fev/26','Jan 2026':'Jan/26'};
   const mesCsvPlat=mesMap2[s.period]||'';
   const platSource=DB.plataformasAll||[];
   const platFiltrado=platSource
     .filter(r=>!r.mes||r.mes===mesCsvPlat)
-    .filter(r=>s.empresa==='Todas as empresas'||!r.empresa||r.empresa===s.empresa)
+    .filter(r=>s.empresa==='Todas as empresas'||!r.empresa||(s.empresa==='Área Incrível'&&(r.empresa==='Área Incrível'||r.empresa==='Terrenistas'))||r.empresa===s.empresa)
     .filter(r=>r.leads>0);
   // Agrupa por plataforma somando leads
   const platMap={};
@@ -520,7 +525,7 @@ const campData=campBase.filter(c=>(s.empresa==='Todas as empresas'||c.empresa===
 
   // Esconde Performance por Campanha e Alertas para Área Incrível
   const campSection=document.getElementById('campAlertsSection');
-  if(campSection) campSection.style.display=s.empresa==='Área Incrível'?'none':'block';
+  if(campSection) campSection.style.display=(s.empresa==='Área Incrível'||s.empresa==='Terrenistas')?'none':'block';
   document.getElementById('subTitle').textContent=s.empresa==='Todas as empresas'?'Área Incrível · Mais Armazém · Centro Logístico':s.empresa;
   document.getElementById('periodLabel').textContent=s.period;
   renderKPIs(kpis,s);renderCompare(kpis,s);renderDaily(s);renderMonthly(s);
@@ -530,7 +535,7 @@ const campData=campBase.filter(c=>(s.empresa==='Todas as empresas'||c.empresa===
 
 function getFunilData(s){
   if(DB.funil&&DB.funil[s.period]){
-    return DB.funil[s.period].filter(r=>s.empresa==='Todas as empresas'||r.empresa===s.empresa);
+    return DB.funil[s.period].filter(r=>{if(s.empresa==='Todas as empresas') return true; if(s.empresa==='Área Incrível') return r.empresa==='Área Incrível'||r.empresa==='Terrenistas'; return r.empresa===s.empresa;});
   }
   return null;
 }
@@ -646,14 +651,14 @@ function renderCompare(kpis,s){
 function renderDaily(s){
   destroyChart('daily');
   const dd=DB.leads_diarios[s.period]||{'Área Incrível':[],'Mais Armazém':[],'Centro Logístico':[],meta:15};
-  const empresas=s.empresa==='Todas as empresas'?['Área Incrível','Mais Armazém','Centro Logístico']:[s.empresa];
+  const empresas=s.empresa==='Todas as empresas'?['Área Incrível','Mais Armazém','Centro Logístico']:s.empresa==='Área Incrível'?['Área Incrível','Terrenistas']:[s.empresa];
   document.getElementById('lgDaily').innerHTML=empresas.map(e=>`<span><span class="ld" style="background:${COLORS[e]}"></span>${e}</span>`).join('')+`<span><span class="ld" style="background:transparent;border:1px dashed #D1D5DB"></span>Meta</span>`;
   charts.daily=new Chart(document.getElementById('c1'),{type:'line',data:{labels:Array.from({length:31},(_,i)=>i+1),datasets:[...empresas.map(e=>({label:e,data:dd[e]||[],borderColor:COLORS[e],backgroundColor:COLORS[e]+'12',tension:.35,pointRadius:0,borderWidth:2,fill:true})),{label:'Meta',data:new Array(31).fill(dd.meta||15),borderColor:'#D1D5DB',borderDash:[4,4],pointRadius:0,borderWidth:1,fill:false}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{mode:'index',intersect:false}},scales:{x:{ticks:{color:tc,font:{size:10},maxTicksLimit:10},grid:{color:gc}},y:{ticks:{color:tc,font:{size:10}},grid:{color:gc},beginAtZero:true}}}});
 }
 
 function renderMonthly(s){
   destroyChart('monthly');
-  const empresas=s.empresa==='Todas as empresas'?['Área Incrível','Mais Armazém','Centro Logístico']:[s.empresa];
+  const empresas=s.empresa==='Todas as empresas'?['Área Incrível','Mais Armazém','Centro Logístico']:s.empresa==='Área Incrível'?['Área Incrível','Terrenistas']:[s.empresa];
   document.getElementById('lgMonthly').innerHTML=empresas.map(e=>`<span><span class="ld" style="background:${COLORS[e]}"></span>${e}</span>`).join('');
   charts.monthly=new Chart(document.getElementById('c2'),{type:'bar',data:{labels:DB.leads_mensais.labels,datasets:empresas.map(e=>({label:e,data:DB.leads_mensais[e],backgroundColor:COLORS[e],borderRadius:2}))},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:tc,font:{size:9},autoSkip:false,maxRotation:45},grid:{display:false}},y:{ticks:{color:tc,font:{size:10}},grid:{color:gc},beginAtZero:true}}}});
 }
