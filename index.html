@@ -306,19 +306,6 @@ async function fetchCSV(url,skipRows,skipNoteRow){
   });
 }
 
-    if(cd){
-      DB.camp_diarias=cd
-        .filter(r=>{const d=r['Data']||''; return /\d{2}\/\d{2}\/\d{4}/.test(d);})
-        .map(r=>({
-          data:(r['Data']||'').trim(),
-          campanha:(r['Campanha']||r['campanha']||'').trim(),
-          empresa:(r['Empresa']||r['empresa']||'').trim(),
-          plataforma:(r['Plataforma']||r['plataforma']||'').trim(),
-          investimento:parseBR(r['Investimento (R$)']||r['investimento']),
-          leads:Number(r['Leads']||r['leads'])||0,
-        }));
-    }
-
 async function loadAllData(){
   document.getElementById('lastUpdate').textContent='Carregando...';
   try{
@@ -468,6 +455,19 @@ async function loadAllData(){
           }
         });
       }
+    }
+
+    if(cd){
+      DB.camp_diarias=cd
+        .filter(r=>{const d=r['Data']||''; return /\d{2}\/\d{2}\/\d{4}/.test(d);})
+        .map(r=>({
+          data:(r['Data']||'').trim(),
+          campanha:(r['Campanha']||r['campanha']||'').trim(),
+          empresa:(r['Empresa']||r['empresa']||'').trim(),
+          plataforma:(r['Plataforma']||r['plataforma']||'').trim(),
+          investimento:parseBR(r['Investimento (R$)']||r['investimento']),
+          leads:Number(r['Leads']||r['leads'])||0,
+        }));
     }
 
     const now=new Date();
