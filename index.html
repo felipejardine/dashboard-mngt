@@ -277,6 +277,13 @@ function parseBR(v){
   const s=String(v).replace(/R\$\s*/g,'').replace(/x$/i,'').replace(/\./g,'').replace(',','.').trim();
   return Number(s)||0;
 }
+// Alguns cabeçalhos na planilha vêm com espaço sobrando (ex: "Terrenistas ")
+// e isso quebra a leitura por nome de coluna. Normaliza tirando espaço nas pontas.
+function trimKeys(row){
+  const out={};
+  for(const k in row){ out[k.trim()]=row[k]; }
+  return out;
+}
 function fmtBRL(v){return'R$'+Math.round(Number(v)).toLocaleString('pt-BR')}
 function fmtK(v){return v>=1000000?'R$'+(v/1000000).toFixed(2)+'M':fmtBRL(v)}
 function destroyChart(id){if(charts[id]){charts[id].destroy();delete charts[id];}}
@@ -392,7 +399,9 @@ async function loadAllData(){
       // Guarda os dados brutos de todos os meses. O cálculo por dia é feito
       // sob demanda em computeLeadsDiarios(), filtrando pelo mês certo —
       // assim funciona pra qualquer período selecionado, não só o do load.
-      const validDays=ld.filter(r=>/^\d{2}\/\d{2}$/.test((r['Data']||r['data']||'').trim()));
+      // trimKeys corrige o cabeçalho "Terrenistas " (com espaço sobrando na planilha).
+      const ldNorm=ld.map(trimKeys);
+      const validDays=ldNorm.filter(r=>/^\d{2}\/\d{2}$/.test((r['Data']||r['data']||'').trim()));
       DB.leadsDiariosAll=validDays;
       DB.leadsDiariosMeta=validDays.length?(Number(validDays[0]['Meta Diária']||validDays[0]['meta'])||15):15;
     }
