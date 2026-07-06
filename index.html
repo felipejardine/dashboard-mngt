@@ -670,6 +670,13 @@ function getFunilData(s){
   return null;
 }
 
+// Terrenistas não usa a coluna SQL — o equivalente de "lead qualificado" pra ela
+// é a coluna Qualificado (funil próprio: MQL → Pré Análise → Qualificado → Negociação).
+// Sem isso, "Qualificados" somava SQL puro e ficava sempre 0 pra Terrenistas.
+function qualificadosDe(r){
+  return r.empresa==='Terrenistas' ? (r.qualificado_tr||0) : (r.sql||0);
+}
+
 function renderKPIs(kpis,s,campFiltrado){
   const dateFilterOn=!!campFiltrado;
   const tl=kpis.reduce((a,r)=>a+Number(r.leads_hoje),0);
@@ -696,7 +703,7 @@ function renderKPIs(kpis,s,campFiltrado){
   const funRows=getFunilData(s);
   if(funRows&&funRows.length>0){
     mql=funRows.reduce((a,r)=>a+r.mql,0);
-    sql=funRows.reduce((a,r)=>a+r.sql,0);
+    sql=funRows.reduce((a,r)=>a+qualificadosDe(r),0);
     mqlPct=lm>0?Math.round(mql/lm*100):0;
     sqlPct=mql>0?Math.round(sql/mql*100):0;
   } else {
@@ -762,8 +769,8 @@ function renderCompare(kpis,s){
   const funPrevRows=DB.funil&&DB.funil[prevPeriod]?DB.funil[prevPeriod].filter(r=>getSelectedEmpresas(s.empresa).includes(r.empresa)):null;
   const mqlCurr=funCurr?funCurr.reduce((a,r)=>a+r.mql,0):Math.round(c.lm*MQL_RATE);
   const mqlPrev=funPrevRows?funPrevRows.reduce((a,r)=>a+r.mql,0):Math.round(p.lm*MQL_RATE);
-  const sqlCurr=funCurr?funCurr.reduce((a,r)=>a+r.sql,0):Math.round(c.lm*SQL_RATE);
-  const sqlPrev=funPrevRows?funPrevRows.reduce((a,r)=>a+r.sql,0):Math.round(p.lm*SQL_RATE);
+  const sqlCurr=funCurr?funCurr.reduce((a,r)=>a+qualificadosDe(r),0):Math.round(c.lm*SQL_RATE);
+  const sqlPrev=funPrevRows?funPrevRows.reduce((a,r)=>a+qualificadosDe(r),0):Math.round(p.lm*SQL_RATE);
 
   // Mês atual sempre em cinza (ainda em andamento)
   const isCurrentMonth = s.period === document.getElementById('fPeriod').options[0].value;
@@ -830,7 +837,7 @@ function renderFunnel(kpis,s){
   const funRows=getFunilData(s);
   if(funRows&&funRows.length>0){
     mql=funRows.reduce((a,r)=>a+r.mql,0);
-    sql=funRows.reduce((a,r)=>a+r.sql,0);
+    sql=funRows.reduce((a,r)=>a+qualificadosDe(r),0);
     opor=funRows.reduce((a,r)=>a+r.oportunidades,0);
     neg=funRows.reduce((a,r)=>a+r.negociacoes,0);
     vendas=funRows.reduce((a,r)=>a+r.vendas,0)||vd;
@@ -940,7 +947,7 @@ function renderDailyEmpresaTable(s){
   const rows=Object.values(grupos).map(g=>{
     const cpl=g.leads>0?g.inv/g.leads:0;
     const funR=funRows?funRows.find(f=>f.empresa===g.empresa):null;
-    const sql=funR?funR.sql:'—';
+    const sql=funR?qualificadosDe(funR):'—';
     return`<tr><td style="font-weight:600">${g.empresa}</td><td>${g.leads.toLocaleString('pt-BR')}</td><td style="color:#047857;font-weight:600">${sql}</td><td>${fmtBRL(g.inv)}</td><td>${cpl>0?fmtBRL(cpl):'—'}</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td><span class="bk bwn">— período</span></td></tr>`;
   }).join('');
 
@@ -955,7 +962,7 @@ function renderEmpresaTable(kpis,s){
     const vd=Math.round(Number(r.leads_mes)*Number(r.taxa)/100);
     const funR=funRows?funRows.find(f=>f.empresa===r.empresa):null;
     const mql=funR?funR.mql:Math.round(Number(r.leads_mes)*MQL_RATE);
-    const sql=funR?funR.sql:Math.round(Number(r.leads_mes)*SQL_RATE);
+    const sql=funR?qualificadosDe(funR):Math.round(Number(r.leads_mes)*SQL_RATE);
     const mp=r.meta_mes>0?Math.round(Number(r.leads_mes)/Number(r.meta_mes)*100):0;
     const bc=mp>=100?'bok':mp>=80?'bwn':'bbd';
     const ic=mp>=100?'🟢':mp>=80?'🟡':'🔴';
