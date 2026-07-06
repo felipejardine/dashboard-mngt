@@ -182,7 +182,7 @@ tr:hover td{background:#F9FAFB}
   </div>
 
   <div class="dv"></div>
-  <div id="campAlertsSection"><p class="st">Performance por campanha</p>
+  <div id="campAlertsSection"><p class="st" id="campSectionTitle">Performance por campanha</p>
   <div class="cc"><div class="tw"><table style="min-width:700px">
     <thead><tr><th>Campanha</th><th>Empresa</th><th>Plataforma</th><th>Investimento</th><th>Impressões</th><th>Cliques</th><th>CTR</th><th>Leads</th><th>CPL</th><th>Vendas</th><th>ROI</th></tr></thead>
     <tbody id="campTb"></tbody>
@@ -290,6 +290,32 @@ function getState(){
   const all=['Área Incrível','Terrenistas','Mais Armazém','Centro Logístico'];
   const empresa=sel.length===0||sel.length===all.length?null:sel.join('|');
   return{period:document.getElementById('fPeriod').value,empresa,plat:document.getElementById('fPlat').value,camp:document.getElementById('fCamp').value};
+}
+
+// O filtro de datas só existe pra Área Incrível/Terrenistas (dado diário real vem
+// de Campanhas Diárias). Essas duas funções centralizam a checagem e o filtro,
+// usadas em todos os blocos que respeitam o intervalo de datas.
+function isDateFilterActive(s){
+  const selectedEmpresas=getSelectedEmpresas(s.empresa);
+  const isAiOrTr=selectedEmpresas.length>0&&selectedEmpresas.every(e=>e==='Área Incrível'||e==='Terrenistas');
+  const from=document.getElementById('fDateFrom').value;
+  const to=document.getElementById('fDateTo').value;
+  return isAiOrTr&&!!from&&!!to&&DB.camp_diarias.length>0;
+}
+
+function getCampDiariasFiltrado(s){
+  const selectedEmpresas=getSelectedEmpresas(s.empresa);
+  const from=document.getElementById('fDateFrom').value;
+  const to=document.getElementById('fDateTo').value;
+  const fromDate=new Date(from+'T00:00:00');
+  const toDate=new Date(to+'T23:59:59');
+  return DB.camp_diarias.filter(r=>{
+    if(!selectedEmpresas.includes(r.empresa)) return false;
+    const parts=r.data.split('/');
+    if(parts.length!==3) return false;
+    const d=new Date(parts[2],parts[1]-1,parts[0]);
+    return d>=fromDate&&d<=toDate;
+  });
 }
 
 // Recalcula os Leads Diários para o período (mês) selecionado a partir dos
@@ -597,10 +623,17 @@ const campData=campBase.filter(c=>getSelectedEmpresas(s.empresa).includes(c.empr
   [...new Set(fonteCamp.map(c=>c.campanha))].forEach(c=>{const o=document.createElement('option');o.value=c;o.textContent=c;selCamp.appendChild(o);});
   if([...selCamp.options].some(o=>o.value===prevCamp))selCamp.value=prevCamp;
 
-  // Esconde Performance por Campanha e Alertas para Área Incrível
+  // Esconde Performance por Campanha e Alertas para Área Incrível/Terrenistas
+  // — EXCETO quando o filtro de data está ativo, caso em que mostramos o
+  // detalhamento por campanha dentro do intervalo escolhido (dado vem de
+  // Campanhas Diárias, que tem granularidade diária real).
+  const dateFilterOn=isDateFilterActive(s);
+  const campDiariasFiltrado=dateFilterOn?getCampDiariasFiltrado(s):null;
   const campSection=document.getElementById('campAlertsSection');
+  const campSectionTitle=document.getElementById('campSectionTitle');
   const onlyAiTr=s.empresa&&s.empresa.split('|').every(e=>e==='Área Incrível'||e==='Terrenistas');
-  if(campSection) campSection.style.display=onlyAiTr?'none':'block';
+  if(campSection) campSection.style.display=(onlyAiTr&&!dateFilterOn)?'none':'block';
+  if(campSectionTitle) campSectionTitle.textContent=dateFilterOn?'Performance por campanha — período selecionado':'Performance por campanha';
 
   // Oculta funil quando AI e Terrenistas estão selecionados juntos (funis distintos)
   const selectedArr=getSelectedEmpresas(s.empresa);
@@ -613,10 +646,12 @@ const campData=campBase.filter(c=>getSelectedEmpresas(s.empresa).includes(c.empr
     funnelSection.style.display=hideFunnel?'none':'block';
   }
   document.getElementById('subTitle').textContent=s.empresa?getSelectedEmpresas(s.empresa).join(' · '):'Área Incrível · Terrenistas · Mais Armazém · Centro Logístico';
-  document.getElementById('periodLabel').textContent=s.period;
-  renderKPIs(kpis,s);renderCompare(kpis,s);renderDaily(s);renderMonthly(s);
+  document.getElementById('periodLabel').textContent=dateFilterOn?(document.getElementById('fDateFrom').value.split('-').reverse().join('/')+' – '+document.getElementById('fDateTo').value.split('-').reverse().join('/')):s.period;
+  renderKPIs(kpis,s,campDiariasFiltrado);renderCompare(kpis,s);renderDaily(s);renderMonthly(s);
   renderPlatform(platData);renderFunnel(kpis,s);renderCacRoi(kpis);
-  if(!renderDailyEmpresaTable(s)) renderEmpresaTable(kpis,s);renderCampTable(campData);renderAlerts(kpis,campData);
+  if(!renderDailyEmpresaTable(s)) renderEmpresaTable(kpis,s);
+  if(dateFilterOn) renderCampTableDiario(campDiariasFiltrado); else renderCampTable(campData);
+  renderAlerts(kpis,campData);
 }
 
 function getFunilData(s){
@@ -626,11 +661,18 @@ function getFunilData(s){
   return null;
 }
 
-function renderKPIs(kpis,s){
+function renderKPIs(kpis,s,campFiltrado){
+  const dateFilterOn=!!campFiltrado;
   const tl=kpis.reduce((a,r)=>a+Number(r.leads_hoje),0);
-  const lm=kpis.reduce((a,r)=>a+Number(r.leads_mes),0);
+  let lm,inv;
+  if(dateFilterOn){
+    lm=campFiltrado.reduce((a,r)=>a+r.leads,0);
+    inv=campFiltrado.reduce((a,r)=>a+r.investimento,0);
+  } else {
+    lm=kpis.reduce((a,r)=>a+Number(r.leads_mes),0);
+    inv=kpis.reduce((a,r)=>a+Number(r.investimento),0);
+  }
   const meta=kpis.reduce((a,r)=>a+Number(r.meta_mes),0);
-  const inv=kpis.reduce((a,r)=>a+Number(r.investimento),0);
   const cpl=lm>0?inv/lm:0;
   const vd=kpis.reduce((a,r)=>a+Math.round(Number(r.leads_mes)*Number(r.taxa)/100),0);
   const cac=vd>0?inv/vd:0;
@@ -688,14 +730,14 @@ function renderKPIs(kpis,s){
 
   document.getElementById('kpiGrid').innerHTML=[
     {l:'Leads hoje',v:tl,s:leadsHojeSeta,cl:''},
-    {l:'Leads do mês',v:lm,s:'Meta '+meta+' · <b style="color:#111827">'+mp+'%</b>',cl:''},
-    {l:'Qualificados',v:sql,s:'<span style="color:#10B981">'+sqlPct+'% dos leads</span>',cl:'sql'},
-    {l:'Investimento',v:fmtK(inv),s:varSeta(inv,prevInv2,true),cl:''},
-    {l:'CPL médio',v:fmtBRL(cpl),s:varSeta(cpl,prevCpl2,false),cl:''},
-    {l:'CAC médio',v:cac>0?fmtBRL(cac):'—',s:cac>0?varSeta(cac,prevCac2,false):'<span class="mu">Sem vendas</span>',cl:''},
-    {l:'ROI médio',v:roi>0?roi.toFixed(2)+'x':'—',s:roi>0?varSeta(roi,prevRoi2,true):'<span class="mu">Sem receita</span>',cl:''},
-    {l:'Tx. conversão',v:tx.toFixed(1)+'%',s:'<span class="mu">Lead → cliente</span>',cl:''},
-    {l:'Pipeline',v:pip>0?fmtK(pip):fmtK(rec),s:pip>0?'<span class="mu">Em negociação</span>':'<span class="mu">Receita acumulada</span>',cl:'hi'},
+    {l:dateFilterOn?'Leads no período':'Leads do mês',v:lm,s:dateFilterOn?'<span class="mu">Campanhas Diárias</span>':'Meta '+meta+' · <b style="color:#111827">'+mp+'%</b>',cl:''},
+    {l:'Qualificados',v:sql,s:(dateFilterOn?'<span class="mu">Mês todo · </span>':'')+'<span style="color:#10B981">'+sqlPct+'% dos leads</span>',cl:'sql'},
+    {l:dateFilterOn?'Investimento no período':'Investimento',v:fmtK(inv),s:dateFilterOn?'<span class="mu">Campanhas Diárias</span>':varSeta(inv,prevInv2,true),cl:''},
+    {l:'CPL médio',v:fmtBRL(cpl),s:dateFilterOn?'<span class="mu">No período selecionado</span>':varSeta(cpl,prevCpl2,false),cl:''},
+    {l:'CAC médio',v:cac>0?fmtBRL(cac):'—',s:(dateFilterOn?'<span class="mu">Mês todo · </span>':'')+(cac>0?varSeta(cac,prevCac2,false):'<span class="mu">Sem vendas</span>'),cl:''},
+    {l:'ROI médio',v:roi>0?roi.toFixed(2)+'x':'—',s:(dateFilterOn?'<span class="mu">Mês todo · </span>':'')+(roi>0?varSeta(roi,prevRoi2,true):'<span class="mu">Sem receita</span>'),cl:''},
+    {l:'Tx. conversão',v:tx.toFixed(1)+'%',s:'<span class="mu">Lead → cliente'+(dateFilterOn?' (mês)':'')+'</span>',cl:''},
+    {l:'Pipeline',v:pip>0?fmtK(pip):fmtK(rec),s:pip>0?('<span class="mu">Em negociação'+(dateFilterOn?' (mês)':'')+'</span>'):('<span class="mu">Receita acumulada'+(dateFilterOn?' (mês)':'')+'</span>'),cl:'hi'},
   ].map(k=>'<div class="kc '+k.cl+'"><p class="kl">'+k.l+'</p><p class="kv">'+k.v+'</p><p class="ks">'+k.s+'</p></div>').join('');
 }
 
@@ -739,7 +781,22 @@ function renderDaily(s){
   const dd=computeLeadsDiarios(s.period);
   const empresas=getSelectedEmpresas(s.empresa);
   document.getElementById('lgDaily').innerHTML=empresas.map(e=>`<span><span class="ld" style="background:${COLORS[e]}"></span>${e}</span>`).join('')+`<span><span class="ld" style="background:transparent;border:1px dashed #D1D5DB"></span>Meta</span>`;
-  charts.daily=new Chart(document.getElementById('c1'),{type:'line',data:{labels:Array.from({length:31},(_,i)=>i+1),datasets:[...empresas.map(e=>({label:e,data:dd[e]||[],borderColor:COLORS[e],backgroundColor:COLORS[e]+'12',tension:.35,pointRadius:0,borderWidth:2,fill:true})),{label:'Meta',data:new Array(31).fill(dd.meta||15),borderColor:'#D1D5DB',borderDash:[4,4],pointRadius:0,borderWidth:1,fill:false}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{mode:'index',intersect:false}},scales:{x:{ticks:{color:tc,font:{size:10},maxTicksLimit:10},grid:{color:gc}},y:{ticks:{color:tc,font:{size:10}},grid:{color:gc},beginAtZero:true}}}});
+
+  // Se o filtro de datas estiver ativo e o intervalo cair dentro do mês exibido,
+  // recorta o gráfico só pros dias selecionados em vez do mês inteiro.
+  let diaIni=1,diaFim=31;
+  if(isDateFilterActive(s)){
+    const from=document.getElementById('fDateFrom').value;
+    const to=document.getElementById('fDateTo').value;
+    const mesesAbrev=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+    const mesIdx=mesesAbrev.indexOf((s.period||'').split(' ')[0]);
+    const [fy,fm,fd]=from.split('-').map(Number);
+    const [ty,tm,td]=to.split('-').map(Number);
+    if((fm-1)===mesIdx) diaIni=fd;
+    if((tm-1)===mesIdx) diaFim=td;
+  }
+  const labels=Array.from({length:31},(_,i)=>i+1).slice(diaIni-1,diaFim);
+  charts.daily=new Chart(document.getElementById('c1'),{type:'line',data:{labels,datasets:[...empresas.map(e=>({label:e,data:(dd[e]||[]).slice(diaIni-1,diaFim),borderColor:COLORS[e],backgroundColor:COLORS[e]+'12',tension:.35,pointRadius:0,borderWidth:2,fill:true})),{label:'Meta',data:new Array(labels.length).fill(dd.meta||15),borderColor:'#D1D5DB',borderDash:[4,4],pointRadius:0,borderWidth:1,fill:false}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{mode:'index',intersect:false}},scales:{x:{ticks:{color:tc,font:{size:10},maxTicksLimit:10},grid:{color:gc}},y:{ticks:{color:tc,font:{size:10}},grid:{color:gc},beginAtZero:true}}}});
 }
 
 function renderMonthly(s){
@@ -909,6 +966,26 @@ function renderCampTable(data){
     const roi=c.roi>0?c.roi.toFixed(1):'—';
     const roiOk=c.roi>=1;
     return`<tr><td style="font-weight:600">${c.campanha}</td><td>${c.empresa}</td><td>${c.plataforma||'—'}</td><td>${c.investimento}</td><td>${c.impressoes}</td><td>${c.cliques}</td><td>${c.ctr}</td><td>${c.leads}</td><td>${c.cpl}</td><td>${vendas}</td><td><span class="bk ${roiOk?'bok':'bbd'}">${roi!=='—'?'R$'+roi:'—'}</span></td></tr>`;
+  }).join('');
+}
+
+// Versão do quadro de campanhas usada quando o filtro de datas está ativo.
+// Agrega Campanhas Diárias (que só tem Campanha/Empresa/Plataforma/Investimento/Leads)
+// dentro do intervalo escolhido. Impressões, Cliques, CTR, Vendas e ROI não têm
+// granularidade diária, então aparecem como "—" nesse modo.
+function renderCampTableDiario(camps){
+  if(!camps||!camps.length){document.getElementById('campTb').innerHTML=`<tr><td colspan="11" class="empty">Nenhuma campanha no período selecionado.</td></tr>`;return;}
+  const grupos={};
+  camps.forEach(r=>{
+    const key=r.campanha+'|'+r.empresa+'|'+r.plataforma;
+    if(!grupos[key]) grupos[key]={campanha:r.campanha,empresa:r.empresa,plataforma:r.plataforma,inv:0,leads:0};
+    grupos[key].inv+=r.investimento;
+    grupos[key].leads+=r.leads;
+  });
+  const rows=Object.values(grupos).sort((a,b)=>b.inv-a.inv);
+  document.getElementById('campTb').innerHTML=rows.map(c=>{
+    const cpl=c.leads>0?c.inv/c.leads:0;
+    return`<tr><td style="font-weight:600">${c.campanha}</td><td>${c.empresa}</td><td>${c.plataforma||'—'}</td><td>${fmtBRL(c.inv)}</td><td>—</td><td>—</td><td>—</td><td>${c.leads}</td><td>${cpl>0?fmtBRL(cpl):'—'}</td><td>—</td><td>—</td></tr>`;
   }).join('');
 }
 
