@@ -459,15 +459,22 @@ async function loadAllData(){
 
     if(cd){
       DB.camp_diarias=cd
-        .filter(r=>{const d=r['Data']||''; return /\d{2}\/\d{2}\/\d{4}/.test(d);})
-        .map(r=>({
-          data:(r['Data']||'').trim(),
-          campanha:(r['Campanha']||r['campanha']||'').trim(),
-          empresa:(r['Empresa']||r['empresa']||'').trim(),
-          plataforma:(r['Plataforma']||r['plataforma']||'').trim(),
-          investimento:parseBR(r['Investimento (R$)']||r['investimento']),
-          leads:Number(r['Leads']||r['leads'])||0,
-        }));
+        .filter(r=>{const d=(r['Data']||'').trim(); return /\d{2}\/\d{2}\/\d{4}/.test(d)||/\d{4}-\d{2}-\d{2}/.test(d);})
+        .map(r=>{
+          let rawDate=(r['Data']||'').trim();
+          if(/\d{4}-\d{2}-\d{2}/.test(rawDate)){
+            const [y,m,d]=rawDate.split('-');
+            rawDate=`${d}/${m}/${y}`;
+          }
+          return {
+            data:rawDate,
+            campanha:(r['Campanha']||r['campanha']||'').trim(),
+            empresa:(r['Empresa']||r['empresa']||'').trim(),
+            plataforma:(r['Plataforma']||r['plataforma']||'').trim(),
+            investimento:parseBR(r['Investimento (R$)']||r['investimento']),
+            leads:Number(r['Leads']||r['leads'])||0,
+          };
+        });
     }
 
     const now=new Date();
