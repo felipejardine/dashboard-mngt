@@ -316,7 +316,7 @@ async function loadAllData(){
       fetchCSV(SHEETS.plataformas,2,true),
       fetchCSV(SHEETS.campanhas,2,true),
       fetchCSV(SHEETS.funil,2,true),
-      fetchCSV(SHEETS.camp_diarias,2,true)
+      fetchCSV(SHEETS.camp_diarias,3,false)
     ]);
 
     if(k) mergeKpis(k);
