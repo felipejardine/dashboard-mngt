@@ -357,7 +357,7 @@ async function loadAllData(){
       fetchCSV(SHEETS.plataformas,2,true),
       fetchCSV(SHEETS.campanhas,2,true),
       fetchCSV(SHEETS.funil,2,true),
-      fetchCSV(SHEETS.camp_diarias,3,false)
+      fetchCSV(SHEETS.camp_diarias,2,true)
     ]);
 
     if(k) mergeKpis(k);
@@ -844,8 +844,8 @@ function renderDailyEmpresaTable(s){
   }
 
   // Filtra por empresa e intervalo de datas
-  const fromDate=new Date(from);
-  const toDate=new Date(to);
+  const fromDate=new Date(from+'T00:00:00');
+  const toDate=new Date(to+'T23:59:59');
 
   const filtrado=DB.camp_diarias.filter(r=>{
     if(!selectedEmpresas.includes(r.empresa)) return false;
