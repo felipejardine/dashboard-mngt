@@ -84,7 +84,7 @@ tr:hover td{background:#F9FAFB}
   <div class="hrow">
     <div>
       <p class="ey">Grupo MNGT</p>
-      <h1 class="h1">Dashboard Executivo de Performance Digital</h1>
+      <h1 class="h1">Dashboard de Marketing</h1>
       <p class="hs" id="subTitle">Área Incrível · Mais Armazém · Centro Logístico</p>
     </div>
     <div style="display:flex;align-items:center;gap:8px">
@@ -161,7 +161,7 @@ tr:hover td{background:#F9FAFB}
       <p class="ct">Origem dos leads por plataforma</p>
       <div style="position:relative" id="platWrap"><canvas id="c3" role="img" aria-label="Leads por plataforma."></canvas></div>
     </div>
-    <div class="cc" style="margin-bottom:0">
+    <div id="funnelSection" class="cc" style="margin-bottom:0">
       <p class="ct">Funil de conversão</p>
       <p class="cs">Grupo consolidado</p>
       <div id="funnel"></div>
@@ -584,6 +584,17 @@ const campData=campBase.filter(c=>(s.empresa==='Todas as empresas'||c.empresa===
   const campSection=document.getElementById('campAlertsSection');
   const onlyAiTr=s.empresa&&s.empresa.split('|').every(e=>e==='Área Incrível'||e==='Terrenistas');
   if(campSection) campSection.style.display=onlyAiTr?'none':'block';
+
+  // Oculta funil quando AI e Terrenistas estão selecionados juntos (funis distintos)
+  const selectedArr=getSelectedEmpresas(s.empresa);
+  const hasAI=selectedArr.includes('Área Incrível');
+  const hasTR=selectedArr.includes('Terrenistas');
+  const hasOthers=selectedArr.some(e=>e!=='Área Incrível'&&e!=='Terrenistas');
+  const funnelSection=document.getElementById('funnelSection');
+  if(funnelSection){
+    const hideFunnel=hasAI&&hasTR&&!hasOthers;
+    funnelSection.style.display=hideFunnel?'none':'block';
+  }
   document.getElementById('subTitle').textContent=s.empresa==='Todas as empresas'?'Área Incrível · Mais Armazém · Centro Logístico':s.empresa;
   document.getElementById('periodLabel').textContent=s.period;
   renderKPIs(kpis,s);renderCompare(kpis,s);renderDaily(s);renderMonthly(s);
@@ -840,9 +851,14 @@ function renderDailyEmpresaTable(s){
     grupos[r.empresa].leads+=r.leads;
   });
 
+  // Busca SQL do funil para o mês do período selecionado
+  const funRows=getFunilData(s);
+
   const rows=Object.values(grupos).map(g=>{
     const cpl=g.leads>0?g.inv/g.leads:0;
-    return`<tr><td style="font-weight:600">${g.empresa}</td><td>${g.leads.toLocaleString('pt-BR')}</td><td>—</td><td>${fmtBRL(g.inv)}</td><td>${cpl>0?fmtBRL(cpl):'—'}</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td><span class="bk bwn">— período</span></td></tr>`;
+    const funR=funRows?funRows.find(f=>f.empresa===g.empresa):null;
+    const sql=funR?funR.sql:'—';
+    return`<tr><td style="font-weight:600">${g.empresa}</td><td>${g.leads.toLocaleString('pt-BR')}</td><td style="color:#047857;font-weight:600">${sql}</td><td>${fmtBRL(g.inv)}</td><td>${cpl>0?fmtBRL(cpl):'—'}</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td><span class="bk bwn">— período</span></td></tr>`;
   }).join('');
 
   document.getElementById('empresaTb').innerHTML=rows;
