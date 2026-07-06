@@ -252,6 +252,7 @@ const DEMO={
   leads_mensais:{
     labels:['Jan/26','Fev/26','Mar/26','Abr/26','Mai/26','Jun/26'],
     'Área Incrível':[0,0,0,0,0,0],
+    'Terrenistas':[0,0,0,0,0,0],
     'Mais Armazém':[0,0,0,0,0,0],
     'Centro Logístico':[0,0,0,0,0,0]
   },
@@ -383,7 +384,7 @@ async function fetchCSV(url,skipRows,skipNoteRow){
 async function loadAllData(){
   document.getElementById('lastUpdate').textContent='Carregando...';
   try{
-    const [k,ld,lm,plt,camp,fun,cd]=await Promise.all([
+    let [k,ld,lm,plt,camp,fun,cd]=await Promise.all([
       fetchCSV(SHEETS.kpis,2,true),
       fetchCSV(SHEETS.leads_diarios,0,false),
       fetchCSV(SHEETS.leads_mensais,2,false),
@@ -392,6 +393,11 @@ async function loadAllData(){
       fetchCSV(SHEETS.funil,2,true),
       fetchCSV(SHEETS.camp_diarias,2,true)
     ]);
+    // Normaliza cabeçalhos com espaço sobrando (ex: "Terrenistas " na planilha)
+    // pra todas as abas de uma vez, não só a que já tinha dado o problema.
+    k=k?k.map(trimKeys):k; ld=ld?ld.map(trimKeys):ld; lm=lm?lm.map(trimKeys):lm;
+    plt=plt?plt.map(trimKeys):plt; camp=camp?camp.map(trimKeys):camp;
+    fun=fun?fun.map(trimKeys):fun; cd=cd?cd.map(trimKeys):cd;
 
     if(k) mergeKpis(k);
 
@@ -399,9 +405,7 @@ async function loadAllData(){
       // Guarda os dados brutos de todos os meses. O cálculo por dia é feito
       // sob demanda em computeLeadsDiarios(), filtrando pelo mês certo —
       // assim funciona pra qualquer período selecionado, não só o do load.
-      // trimKeys corrige o cabeçalho "Terrenistas " (com espaço sobrando na planilha).
-      const ldNorm=ld.map(trimKeys);
-      const validDays=ldNorm.filter(r=>/^\d{2}\/\d{2}$/.test((r['Data']||r['data']||'').trim()));
+      const validDays=ld.filter(r=>/^\d{2}\/\d{2}$/.test((r['Data']||r['data']||'').trim()));
       DB.leadsDiariosAll=validDays;
       DB.leadsDiariosMeta=validDays.length?(Number(validDays[0]['Meta Diária']||validDays[0]['meta'])||15):15;
     }
@@ -414,11 +418,12 @@ async function loadAllData(){
         const sortedMonths=validMonths
           .filter(r=>{
             const ai=Number(r['Área Incrível']||0);
+            const tr=Number(r['Terrenistas']||0);
             const ma=Number(r['Mais Armazém']||0);
             const cl=Number(r['Centro Logístico']||0);
             const m=(r['Mês']||'').trim().split('/')[0];
             // Inclui apenas meses com dados ou o mês atual
-            return ai>0||ma>0||cl>0||((r['Mês']||'').includes('Jul')&&new Date().getMonth()===6);
+            return ai>0||tr>0||ma>0||cl>0||((r['Mês']||'').includes('Jul')&&new Date().getMonth()===6);
           })
           .sort((a,b)=>{
             const [mA,yA]=(a['Mês']||'').trim().split('/');
@@ -428,6 +433,7 @@ async function loadAllData(){
           });
         DB.leads_mensais.labels=sortedMonths.map(r=>(r['Mês']||r['mes']||'').trim());
         DB.leads_mensais['Área Incrível']=sortedMonths.map(r=>Number(r['Área Incrível']||r['area_incrivel'])||0);
+        DB.leads_mensais['Terrenistas']=sortedMonths.map(r=>Number(r['Terrenistas']||r['terrenistas'])||0);
         DB.leads_mensais['Mais Armazém']=sortedMonths.map(r=>Number(r['Mais Armazém']||r['mais_armazem'])||0);
         DB.leads_mensais['Centro Logístico']=sortedMonths.map(r=>Number(r['Centro Logístico']||r['centro_logistico'])||0);
       }
