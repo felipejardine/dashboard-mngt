@@ -327,11 +327,19 @@ function getCampDiariasFiltrado(s){
   const to=document.getElementById('fDateTo').value;
   const fromDate=new Date(from+'T00:00:00');
   const toDate=new Date(to+'T23:59:59');
+  const anoPadrao=Number(from.split('-')[0]);
   return DB.camp_diarias.filter(r=>{
     if(!selectedEmpresas.includes(r.empresa)) return false;
     const parts=r.data.split('/');
-    if(parts.length!==3) return false;
-    const d=new Date(parts[2],parts[1]-1,parts[0]);
+    let d;
+    if(parts.length===3){
+      d=new Date(parts[2],parts[1]-1,parts[0]);
+    } else if(parts.length===2){
+      // Sem ano na planilha (dd/MM) — assume o ano da data "De" do filtro
+      d=new Date(anoPadrao,parts[1]-1,parts[0]);
+    } else {
+      return false;
+    }
     return d>=fromDate&&d<=toDate;
   });
 }
@@ -560,11 +568,18 @@ async function loadAllData(){
     }
 
     if(cd){
+      // Aceita 3 formatos de data: dd/MM/aaaa, aaaa-mm-dd, e dd/MM sem ano
+      // (esse último é o formato real que a planilha usa hoje). Quando não
+      // tem ano, guardamos só "dd/MM" e o ano é inferido na hora de filtrar
+      // (a partir da data "De" escolhida no filtro) — mesma lógica do Funil Diário.
       DB.camp_diarias=cd
-        .filter(r=>{const d=(r['Data']||'').trim(); return /\d{2}\/\d{2}\/\d{4}/.test(d)||/\d{4}-\d{2}-\d{2}/.test(d);})
+        .filter(r=>{
+          const d=(r['Data']||'').trim();
+          return /^\d{2}\/\d{2}\/\d{4}$/.test(d)||/^\d{4}-\d{2}-\d{2}$/.test(d)||/^\d{2}\/\d{2}$/.test(d);
+        })
         .map(r=>{
           let rawDate=(r['Data']||'').trim();
-          if(/\d{4}-\d{2}-\d{2}/.test(rawDate)){
+          if(/^\d{4}-\d{2}-\d{2}$/.test(rawDate)){
             const [y,m,d]=rawDate.split('-');
             rawDate=`${d}/${m}/${y}`;
           }
@@ -1014,12 +1029,19 @@ function renderDailyEmpresaTable(s){
   // Filtra por empresa e intervalo de datas
   const fromDate=new Date(from+'T00:00:00');
   const toDate=new Date(to+'T23:59:59');
+  const anoPadrao=Number(from.split('-')[0]);
 
   const filtrado=DB.camp_diarias.filter(r=>{
     if(!selectedEmpresas.includes(r.empresa)) return false;
     const parts=r.data.split('/');
-    if(parts.length!==3) return false;
-    const d=new Date(parts[2],parts[1]-1,parts[0]);
+    let d;
+    if(parts.length===3){
+      d=new Date(parts[2],parts[1]-1,parts[0]);
+    } else if(parts.length===2){
+      d=new Date(anoPadrao,parts[1]-1,parts[0]);
+    } else {
+      return false;
+    }
     return d>=fromDate&&d<=toDate;
   });
 
