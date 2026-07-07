@@ -202,7 +202,7 @@ const SHEETS = {
   campanhas:     'https://docs.google.com/spreadsheets/d/e/2PACX-1vTXgU1soXgto3xIiMY0cC4sMunrW-FRfS06hrFAjfM82LsD8BCs3QCYAjnaLNBvo50A6qTsd7txgzpj/pub?gid=1273319349&single=true&output=csv',
   funil:         'https://docs.google.com/spreadsheets/d/e/2PACX-1vTXgU1soXgto3xIiMY0cC4sMunrW-FRfS06hrFAjfM82LsD8BCs3QCYAjnaLNBvo50A6qTsd7txgzpj/pub?gid=1816261762&single=true&output=csv',
   camp_diarias:  'https://docs.google.com/spreadsheets/d/e/2PACX-1vTXgU1soXgto3xIiMY0cC4sMunrW-FRfS06hrFAjfM82LsD8BCs3QCYAjnaLNBvo50A6qTsd7txgzpj/pub?gid=684282188&single=true&output=csv',
-  funil_diario:  'https://docs.google.com/spreadsheets/d/e/2PACX-1vTXgU1soXgto3xIiMY0cC4sMunrW-FRfS06hrFAjfM82LsD8BCs3QCYAjnaLNBvo50A6qTsd7txgzpj/pub?gid=SUBSTITUA_PELO_GID&single=true&output=csv',
+  funil_diario:  'https://docs.google.com/spreadsheets/d/e/2PACX-1vTXgU1soXgto3xIiMY0cC4sMunrW-FRfS06hrFAjfM82LsD8BCs3QCYAjnaLNBvo50A6qTsd7txgzpj/pub?gid=560231025&single=true&output=csv',
 };
 
 const tc='#9CA3AF',gc='rgba(0,0,0,0.05)';
@@ -575,23 +575,35 @@ async function loadAllData(){
       // Funil Diário: uma linha por dia/empresa, só existe a partir de quando essa
       // aba foi criada — meses anteriores não têm esse detalhamento (ver nota no
       // renderFunnel/renderKPIs, que caem pro total mensal quando não há dado diário).
+      // Aceita tanto "dd/MM" (formato do webhook) quanto "yyyy-mm-dd" (Google Sheets
+      // às vezes auto-formata datas digitadas manualmente nesse padrão).
       DB.funilDiarioAll=fd
-        .filter(r=>/^\d{2}\/\d{2}$/.test((r['Data']||'').trim()))
-        .map(r=>({
-          data:(r['Data']||'').trim(),
-          empresa:(r['Empresa']||'').trim(),
-          mql:Number(r['MQL'])||0,
-          sql:Number(r['SQL'])||0,
-          oportunidades:Number(r['Oportunidades'])||0,
-          negociacoes:Number(r['Negociações']||r['Negociacoes'])||0,
-          vendas:Number(r['Vendas'])||0,
-          receita:Number(r['Receita']||r['Receita (R$)'])||0,
-          visita_agendada:Number(r['Visita Agendada'])||0,
-          visita_realizada:Number(r['Visita Realizada'])||0,
-          em_atendimento:Number(r['Em Atendimento'])||0,
-          pre_analise:Number(r['Pré Análise']||r['Pre Analise'])||0,
-          qualificado_tr:Number(r['Qualificado'])||0,
-        }));
+        .filter(r=>{
+          const d=(r['Data']||'').trim();
+          return /^\d{2}\/\d{2}$/.test(d)||/^\d{4}-\d{2}-\d{2}$/.test(d);
+        })
+        .map(r=>{
+          let data=(r['Data']||'').trim();
+          if(/^\d{4}-\d{2}-\d{2}$/.test(data)){
+            const [,m,d]=data.split('-');
+            data=`${d}/${m}`;
+          }
+          return {
+            data,
+            empresa:(r['Empresa']||'').trim(),
+            mql:Number(r['MQL'])||0,
+            sql:Number(r['SQL'])||0,
+            oportunidades:Number(r['Oportunidades'])||0,
+            negociacoes:Number(r['Negociações']||r['Negociacoes'])||0,
+            vendas:Number(r['Vendas'])||0,
+            receita:Number(r['Receita']||r['Receita (R$)'])||0,
+            visita_agendada:Number(r['Visita Agendada'])||0,
+            visita_realizada:Number(r['Visita Realizada'])||0,
+            em_atendimento:Number(r['Em Atendimento'])||0,
+            pre_analise:Number(r['Pré Análise']||r['Pre Analise'])||0,
+            qualificado_tr:Number(r['Qualificado'])||0,
+          };
+        });
     }
 
     const now=new Date();
