@@ -194,15 +194,23 @@ tr:hover td{background:#F9FAFB}
 </div></div>
 
 <script>
+// v13: trocado de "Publicar na Web" (pub?gid=...) pro endpoint de export direto
+// (/export?format=csv&gid=...). O link de Publicar na Web se mostrou instável —
+// toda vez que a planilha era republicada, um ou mais gids paravam de responder
+// (401/404) mesmo sem o gid real ter mudado. O /export usa o ID permanente da
+// planilha (o mesmo do Code.gs) e só depende de permissão de compartilhamento
+// ("Qualquer pessoa com o link" → Leitor), que não se reseta sozinha.
+const SPREADSHEET_ID = '1yUOepSbLbD_pZOyv1Z28civ45m4hLatq5IFxhwugL-s';
+const SHEET_BASE = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/export?format=csv&gid=`;
 const SHEETS = {
-  kpis:          'https://docs.google.com/spreadsheets/d/e/2PACX-1vTXgU1soXgto3xIiMY0cC4sMunrW-FRfS06hrFAjfM82LsD8BCs3QCYAjnaLNBvo50A6qTsd7txgzpj/pub?gid=1166282157&single=true&output=csv',
-  leads_diarios: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTXgU1soXgto3xIiMY0cC4sMunrW-FRfS06hrFAjfM82LsD8BCs3QCYAjnaLNBvo50A6qTsd7txgzpj/pub?gid=11334140&single=true&output=csv',
-  leads_mensais: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTXgU1soXgto3xIiMY0cC4sMunrW-FRfS06hrFAjfM82LsD8BCs3QCYAjnaLNBvo50A6qTsd7txgzpj/pub?gid=1514319272&single=true&output=csv',
-  plataformas:   'https://docs.google.com/spreadsheets/d/e/2PACX-1vTXgU1soXgto3xIiMY0cC4sMunrW-FRfS06hrFAjfM82LsD8BCs3QCYAjnaLNBvo50A6qTsd7txgzpj/pub?gid=1762653540&single=true&output=csv',
-  campanhas:     'https://docs.google.com/spreadsheets/d/e/2PACX-1vTXgU1soXgto3xIiMY0cC4sMunrW-FRfS06hrFAjfM82LsD8BCs3QCYAjnaLNBvo50A6qTsd7txgzpj/pub?gid=1273319349&single=true&output=csv',
-  funil:         'https://docs.google.com/spreadsheets/d/e/2PACX-1vTXgU1soXgto3xIiMY0cC4sMunrW-FRfS06hrFAjfM82LsD8BCs3QCYAjnaLNBvo50A6qTsd7txgzpj/pub?gid=1816261762&single=true&output=csv',
-  camp_diarias:  'https://docs.google.com/spreadsheets/d/e/2PACX-1vTXgU1soXgto3xIiMY0cC4sMunrW-FRfS06hrFAjfM82LsD8BCs3QCYAjnaLNBvo50A6qTsd7txgzpj/pub?gid=684282188&single=true&output=csv',
-  funil_diario:  'https://docs.google.com/spreadsheets/d/e/2PACX-1vTXgU1soXgto3xIiMY0cC4sMunrW-FRfS06hrFAjfM82LsD8BCs3QCYAjnaLNBvo50A6qTsd7txgzpj/pub?gid=560231025&single=true&output=csv',
+  kpis:          SHEET_BASE+'1166282157',
+  leads_diarios: SHEET_BASE+'11334140',
+  leads_mensais: SHEET_BASE+'1514319272',
+  plataformas:   SHEET_BASE+'1762653540',
+  campanhas:     SHEET_BASE+'1273319349',
+  funil:         SHEET_BASE+'1816261762',
+  camp_diarias:  SHEET_BASE+'684282188',
+  funil_diario:  SHEET_BASE+'560231025',
 };
 
 const tc='#9CA3AF',gc='rgba(0,0,0,0.05)';
