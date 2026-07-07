@@ -980,7 +980,7 @@ function renderCompare(kpis,s,campFiltrado,funilFiltrado,campPrev,funilPrev){
     const cls=isCurrentMonth?'mu':(good?'up':'dn');
     const arrow=d>0?'↑ +':'↓ −';
     const pctLabel=i.prev>0?(arrow+Math.abs(d)+'% '+label):'—';
-    return`<div class="ck"><p class="cl2">${i.l}</p><p class="cv">${i.fmt(i.curr)}</p><p class="cd ${cls}">${label}</p></div>`;
+    return`<div class="ck"><p class="cl2">${i.l}</p><p class="cv">${i.fmt(i.curr)}</p><p class="cd ${cls}">${pctLabel}</p></div>`;
   }).join('');
 }
 
