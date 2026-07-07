@@ -148,7 +148,7 @@ tr:hover td{background:#F9FAFB}
       <div style="position:relative;height:185px"><canvas id="c2" role="img" aria-label="Leads mensais por empresa."></canvas></div>
     </div>
     <div class="cc" style="margin-bottom:0">
-      <p class="ct" style="margin-bottom:11px">Atual vs. mês anterior</p>
+      <p class="ct" id="compareTitle" style="margin-bottom:11px">Atual vs. mês anterior</p>
       <div class="cg" id="compGrid"></div>
     </div>
   </div>
@@ -321,13 +321,10 @@ function isDateFilterActive(s){
   return isAiOrTr&&!!from&&!!to&&DB.camp_diarias.length>0;
 }
 
-function getCampDiariasFiltrado(s){
-  const selectedEmpresas=getSelectedEmpresas(s.empresa);
-  const from=document.getElementById('fDateFrom').value;
-  const to=document.getElementById('fDateTo').value;
-  const fromDate=new Date(from+'T00:00:00');
-  const toDate=new Date(to+'T23:59:59');
-  const anoPadrao=Number(from.split('-')[0]);
+// Núcleo comum: filtra Campanhas Diárias por empresa + intervalo de datas
+// explícito (não necessariamente o do filtro na tela — usado também pra
+// calcular o "mesmo intervalo, mês anterior").
+function filtrarCampDiarias(selectedEmpresas, fromDate, toDate, anoPadrao){
   return DB.camp_diarias.filter(r=>{
     if(!selectedEmpresas.includes(r.empresa)) return false;
     const parts=r.data.split('/');
@@ -335,7 +332,6 @@ function getCampDiariasFiltrado(s){
     if(parts.length===3){
       d=new Date(parts[2],parts[1]-1,parts[0]);
     } else if(parts.length===2){
-      // Sem ano na planilha (dd/MM) — assume o ano da data "De" do filtro
       d=new Date(anoPadrao,parts[1]-1,parts[0]);
     } else {
       return false;
@@ -344,19 +340,20 @@ function getCampDiariasFiltrado(s){
   });
 }
 
-// Agrega o Funil Diário (dd/MM, sem ano) dentro do intervalo escolhido, por
-// empresa — mesmo formato de getFunilData(), pra poder reaproveitar
-// renderFunnel/renderKPIs sem duplicar lógica de exibição.
-// Retorna null se a aba ainda não tem dado pro período (ex: meses anteriores
-// à criação da aba, ou Mais Armazém/Centro Logístico que não usam funil).
-function getFunilDiarioFiltrado(s){
-  if(!DB.funilDiarioAll||!DB.funilDiarioAll.length) return null;
+function getCampDiariasFiltrado(s){
   const selectedEmpresas=getSelectedEmpresas(s.empresa);
   const from=document.getElementById('fDateFrom').value;
   const to=document.getElementById('fDateTo').value;
   const fromDate=new Date(from+'T00:00:00');
   const toDate=new Date(to+'T23:59:59');
-  const ano=Number(from.split('-')[0]);
+  const anoPadrao=Number(from.split('-')[0]);
+  return filtrarCampDiarias(selectedEmpresas, fromDate, toDate, anoPadrao);
+}
+
+// Núcleo comum: agrega Funil Diário por empresa dentro de um intervalo
+// explícito. Retorna null se não achar nenhuma linha no intervalo.
+function agregarFunilDiario(selectedEmpresas, fromDate, toDate, ano){
+  if(!DB.funilDiarioAll||!DB.funilDiarioAll.length) return null;
   const linhas=DB.funilDiarioAll.filter(r=>{
     if(!selectedEmpresas.includes(r.empresa)) return false;
     const partes=r.data.split('/');
@@ -376,6 +373,33 @@ function getFunilDiarioFiltrado(s){
   });
   return Object.values(porEmpresa);
 }
+
+// Agrega o Funil Diário (dd/MM, sem ano) dentro do intervalo escolhido, por
+// empresa — mesmo formato de getFunilData(), pra poder reaproveitar
+// renderFunnel/renderKPIs sem duplicar lógica de exibição.
+// Retorna null se a aba ainda não tem dado pro período (ex: meses anteriores
+// à criação da aba, ou Mais Armazém/Centro Logístico que não usam funil).
+function getFunilDiarioFiltrado(s){
+  const selectedEmpresas=getSelectedEmpresas(s.empresa);
+  const from=document.getElementById('fDateFrom').value;
+  const to=document.getElementById('fDateTo').value;
+  const fromDate=new Date(from+'T00:00:00');
+  const toDate=new Date(to+'T23:59:59');
+  const ano=Number(from.split('-')[0]);
+  return agregarFunilDiario(selectedEmpresas, fromDate, toDate, ano);
+}
+
+// Calcula o mesmo intervalo de dias, um mês antes (ex: 01-05/07 -> 01-05/06).
+// Usado pra comparar "Atual vs. mês anterior" de forma justa quando o filtro
+// de data está ativo, em vez de comparar contra o mês anterior inteiro.
+function getIntervaloMesAnterior(from,to){
+  const [fy,fm,fd]=from.split('-').map(Number);
+  const [ty,tm,td]=to.split('-').map(Number);
+  const fromPrev=new Date(fy,fm-2,fd,0,0,0);
+  const toPrev=new Date(ty,tm-2,td,23,59,59);
+  return {fromPrev,toPrev};
+}
+
 
 // Recalcula os Leads Diários para o período (mês) selecionado a partir dos
 // dados brutos guardados em DB.leadsDiariosAll. Corrige o bug antigo que
@@ -757,7 +781,20 @@ const campData=campBase.filter(c=>getSelectedEmpresas(s.empresa).includes(c.empr
   }
   document.getElementById('subTitle').textContent=s.empresa?getSelectedEmpresas(s.empresa).join(' · '):'Área Incrível · Terrenistas · Mais Armazém · Centro Logístico';
   document.getElementById('periodLabel').textContent=dateFilterOn?(document.getElementById('fDateFrom').value.split('-').reverse().join('/')+' – '+document.getElementById('fDateTo').value.split('-').reverse().join('/')):s.period;
-  renderKPIs(kpis,s,campDiariasFiltrado,funilDiarioFiltrado);renderCompare(kpis,s);renderDaily(s);renderMonthly(s);
+  renderKPIs(kpis,s,campDiariasFiltrado,funilDiarioFiltrado);
+  if(dateFilterOn){
+    const from=document.getElementById('fDateFrom').value;
+    const to=document.getElementById('fDateTo').value;
+    const {fromPrev,toPrev}=getIntervaloMesAnterior(from,to);
+    const selectedEmpresas=getSelectedEmpresas(s.empresa);
+    const anoPrev=fromPrev.getFullYear();
+    const campPrev=filtrarCampDiarias(selectedEmpresas, fromPrev, toPrev, anoPrev);
+    const funilPrev=agregarFunilDiario(selectedEmpresas, fromPrev, toPrev, anoPrev);
+    renderCompare(kpis,s,campDiariasFiltrado,funilDiarioFiltrado,campPrev,funilPrev);
+  } else {
+    renderCompare(kpis,s);
+  }
+  renderDaily(s);renderMonthly(s);
   renderPlatform(platData);renderFunnel(kpis,s,funilDiarioFiltrado,campDiariasFiltrado);renderCacRoi(kpis);
   if(!renderDailyEmpresaTable(s,funilDiarioFiltrado)) renderEmpresaTable(kpis,s);
   if(dateFilterOn) renderCampTableDiario(campDiariasFiltrado); else renderCampTable(campData);
@@ -860,23 +897,57 @@ function renderKPIs(kpis,s,campFiltrado,funilFiltrado){
   ].map(k=>'<div class="kc '+k.cl+'"><p class="kl">'+k.l+'</p><p class="kv">'+k.v+'</p><p class="ks">'+k.s+'</p></div>').join('');
 }
 
-function renderCompare(kpis,s){
-  const prevMap={'Jul 2026':'Jun 2026','Jun 2026':'Mai 2026','Mai 2026':'Abr 2026','Abr 2026':'Mar 2026','Mar 2026':'Fev 2026','Fev 2026':'Jan 2026','Jan 2026':'Jan 2026'};
-  const prevPeriod=prevMap[s.period]||'Mai 2026';
-  const prev=(DB.kpis[prevPeriod]||DB.kpis['Jun 2026']).filter(r=>getSelectedEmpresas(s.empresa).includes(r.empresa));
-  const calc=arr=>({lm:arr.reduce((a,r)=>a+Number(r.leads_mes),0),inv:arr.reduce((a,r)=>a+Number(r.investimento),0),rec:arr.reduce((a,r)=>a+Number(r.receita),0),vd:arr.reduce((a,r)=>a+Math.round(Number(r.leads_mes)*Number(r.taxa)/100),0)});
-  const c=calc(kpis),p=calc(prev);
+function renderCompare(kpis,s,campFiltrado,funilFiltrado,campPrev,funilPrev){
+  const dateFilterOn=!!campFiltrado;
+  let c,p,sqlCurr,sqlPrev,label;
 
-  // MQL/SQL reais se disponíveis
-  const funCurr=getFunilData(s);
-  const funPrevRows=DB.funil&&DB.funil[prevPeriod]?DB.funil[prevPeriod].filter(r=>getSelectedEmpresas(s.empresa).includes(r.empresa)):null;
-  const mqlCurr=funCurr?funCurr.reduce((a,r)=>a+r.mql,0):Math.round(c.lm*MQL_RATE);
-  const mqlPrev=funPrevRows?funPrevRows.reduce((a,r)=>a+r.mql,0):Math.round(p.lm*MQL_RATE);
-  const sqlCurr=funCurr?funCurr.reduce((a,r)=>a+qualificadosDe(r),0):Math.round(c.lm*SQL_RATE);
-  const sqlPrev=funPrevRows?funPrevRows.reduce((a,r)=>a+qualificadosDe(r),0):Math.round(p.lm*SQL_RATE);
+  if(dateFilterOn){
+    // Compara o mesmo intervalo de dias, um mês antes — comparação justa
+    // mesmo com o mês corrente ainda em andamento.
+    c={
+      lm:campFiltrado.reduce((a,r)=>a+r.leads,0),
+      inv:campFiltrado.reduce((a,r)=>a+r.investimento,0),
+      rec:funilFiltrado?funilFiltrado.reduce((a,r)=>a+(r.receita||0),0):0,
+    };
+    p={
+      lm:(campPrev||[]).reduce((a,r)=>a+r.leads,0),
+      inv:(campPrev||[]).reduce((a,r)=>a+r.investimento,0),
+      rec:funilPrev?funilPrev.reduce((a,r)=>a+(r.receita||0),0):0,
+    };
+    sqlCurr=funilFiltrado?funilFiltrado.reduce((a,r)=>a+qualificadosDe(r),0):0;
+    sqlPrev=funilPrev?funilPrev.reduce((a,r)=>a+qualificadosDe(r),0):0;
+    label=`vs. mesmo período (mês ant.)`;
+    const compareTitleEl=document.getElementById('compareTitle');
+    if(compareTitleEl){
+      const fromVal=document.getElementById('fDateFrom').value;
+      const toVal=document.getElementById('fDateTo').value;
+      const {fromPrev,toPrev}=getIntervaloMesAnterior(fromVal,toVal);
+      const fromFmt=fromVal.split('-').reverse().join('/');
+      const toFmt=toVal.split('-').reverse().join('/');
+      const fromPrevFmt=String(fromPrev.getDate()).padStart(2,'0')+'/'+String(fromPrev.getMonth()+1).padStart(2,'0')+'/'+fromPrev.getFullYear();
+      const toPrevFmt=String(toPrev.getDate()).padStart(2,'0')+'/'+String(toPrev.getMonth()+1).padStart(2,'0')+'/'+toPrev.getFullYear();
+      compareTitleEl.textContent=`${fromFmt}–${toFmt} vs. ${fromPrevFmt}–${toPrevFmt}`;
+    }
+  } else {
+    const prevMap={'Jul 2026':'Jun 2026','Jun 2026':'Mai 2026','Mai 2026':'Abr 2026','Abr 2026':'Mar 2026','Mar 2026':'Fev 2026','Fev 2026':'Jan 2026','Jan 2026':'Jan 2026'};
+    const prevPeriod=prevMap[s.period]||'Mai 2026';
+    const prev=(DB.kpis[prevPeriod]||DB.kpis['Jun 2026']).filter(r=>getSelectedEmpresas(s.empresa).includes(r.empresa));
+    const calc=arr=>({lm:arr.reduce((a,r)=>a+Number(r.leads_mes),0),inv:arr.reduce((a,r)=>a+Number(r.investimento),0),rec:arr.reduce((a,r)=>a+Number(r.receita),0)});
+    c=calc(kpis); p=calc(prev);
 
-  // Mês atual sempre em cinza (ainda em andamento)
-  const isCurrentMonth = s.period === document.getElementById('fPeriod').options[0].value;
+    const funCurr=getFunilData(s);
+    const funPrevRows=DB.funil&&DB.funil[prevPeriod]?DB.funil[prevPeriod].filter(r=>getSelectedEmpresas(s.empresa).includes(r.empresa)):null;
+    sqlCurr=funCurr?funCurr.reduce((a,r)=>a+qualificadosDe(r),0):Math.round(c.lm*SQL_RATE);
+    sqlPrev=funPrevRows?funPrevRows.reduce((a,r)=>a+qualificadosDe(r),0):Math.round(p.lm*SQL_RATE);
+    label='vs ant.';
+    const compareTitleElNormal=document.getElementById('compareTitle');
+    if(compareTitleElNormal) compareTitleElNormal.textContent='Atual vs. mês anterior';
+  }
+
+  // Mês atual sempre em cinza (ainda em andamento) — só se aplica na
+  // comparação mês-a-mês. Com filtro de data ativo, os dois intervalos têm
+  // o mesmo tamanho, então a comparação já é justa e usa cor normal.
+  const isCurrentMonth = !dateFilterOn && s.period === document.getElementById('fPeriod').options[0].value;
   const items=[
     {l:'Leads',curr:c.lm,prev:p.lm,fmt:v=>v,up:true},
     {l:'SQL',curr:sqlCurr,prev:sqlPrev,fmt:v=>v,up:true},
@@ -887,10 +958,10 @@ function renderCompare(kpis,s){
   document.getElementById('compGrid').innerHTML=items.map(i=>{
     const d=i.prev>0?Math.round((i.curr-i.prev)/i.prev*100):0;
     const good=i.up?d>0:d<0;
-    // Mês atual: mostra seta mas em cinza. Meses passados: verde/vermelho
+    // Mês atual: mostra seta mas em cinza. Meses passados/período com filtro: verde/vermelho
     const cls=isCurrentMonth?'mu':(good?'up':'dn');
     const arrow=d>0?'↑ +':'↓ −';
-    const label=i.prev>0?(arrow+Math.abs(d)+'% vs ant.'):'—';
+    const pctLabel=i.prev>0?(arrow+Math.abs(d)+'% '+label):'—';
     return`<div class="ck"><p class="cl2">${i.l}</p><p class="cv">${i.fmt(i.curr)}</p><p class="cd ${cls}">${label}</p></div>`;
   }).join('');
 }
