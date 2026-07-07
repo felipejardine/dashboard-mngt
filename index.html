@@ -1155,7 +1155,12 @@ function renderDailyEmpresaTable(s,funilFiltrado){
     const cpl=g.leads>0?g.inv/g.leads:0;
     const funR=funRows?funRows.find(f=>f.empresa===g.empresa):null;
     const sql=funR?qualificadosDe(funR):'—';
-    return`<tr><td style="font-weight:600">${g.empresa}</td><td>${g.leads.toLocaleString('pt-BR')}</td><td style="color:#047857;font-weight:600">${sql}</td><td>${fmtBRL(g.inv)}</td><td>${cpl>0?fmtBRL(cpl):'—'}</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td><span class="bk bwn">— período</span></td></tr>`;
+    const vendas=funR?(funR.vendas||0):0;
+    const receita=funR?(funR.receita||0):0;
+    const cac=vendas>0?g.inv/vendas:0;
+    const roi=g.inv>0&&receita>0?receita/g.inv:0;
+    const conversao=g.leads>0?vendas/g.leads*100:0;
+    return`<tr><td style="font-weight:600">${g.empresa}</td><td>${g.leads.toLocaleString('pt-BR')}</td><td style="color:#047857;font-weight:600">${sql}</td><td>${fmtBRL(g.inv)}</td><td>${cpl>0?fmtBRL(cpl):'—'}</td><td>${cac>0?fmtBRL(cac):'—'}</td><td>${vendas>0?vendas:'—'}</td><td>${receita>0?fmtBRL(receita):'—'}</td><td>${roi>0?roi.toFixed(2)+'x':'—'}</td><td>${conversao>0?conversao.toFixed(1)+'%':'—'}</td><td><span class="bk bwn">— período</span></td></tr>`;
   }).join('');
 
   document.getElementById('empresaTb').innerHTML=rows;
