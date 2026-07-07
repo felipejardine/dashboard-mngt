@@ -759,7 +759,7 @@ const campData=campBase.filter(c=>getSelectedEmpresas(s.empresa).includes(c.empr
   document.getElementById('periodLabel').textContent=dateFilterOn?(document.getElementById('fDateFrom').value.split('-').reverse().join('/')+' – '+document.getElementById('fDateTo').value.split('-').reverse().join('/')):s.period;
   renderKPIs(kpis,s,campDiariasFiltrado,funilDiarioFiltrado);renderCompare(kpis,s);renderDaily(s);renderMonthly(s);
   renderPlatform(platData);renderFunnel(kpis,s,funilDiarioFiltrado,campDiariasFiltrado);renderCacRoi(kpis);
-  if(!renderDailyEmpresaTable(s)) renderEmpresaTable(kpis,s);
+  if(!renderDailyEmpresaTable(s,funilDiarioFiltrado)) renderEmpresaTable(kpis,s);
   if(dateFilterOn) renderCampTableDiario(campDiariasFiltrado); else renderCampTable(campData);
   renderAlerts(kpis,campData);
 }
@@ -1010,7 +1010,7 @@ function renderCacRoi(kpis){
 }
 
 
-function renderDailyEmpresaTable(s){
+function renderDailyEmpresaTable(s,funilFiltrado){
   const dateWrap=document.getElementById('dateRangeWrap');
   const selectedEmpresas=getSelectedEmpresas(s.empresa);
   const isAiOrTr=selectedEmpresas.every(e=>e==='Área Incrível'||e==='Terrenistas');
@@ -1058,8 +1058,9 @@ function renderDailyEmpresaTable(s){
     grupos[r.empresa].leads+=r.leads;
   });
 
-  // Busca SQL do funil para o mês do período selecionado
-  const funRows=getFunilData(s);
+  // Busca SQL/Qualificado do funil — usa o diário (período exato) quando
+  // disponível; senão cai pro total do mês.
+  const funRows=funilFiltrado||getFunilData(s);
 
   const rows=Object.values(grupos).map(g=>{
     const cpl=g.leads>0?g.inv/g.leads:0;
