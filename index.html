@@ -818,6 +818,9 @@ function qualificadosDe(r){
 function renderKPIs(kpis,s,campFiltrado,funilFiltrado){
   const dateFilterOn=!!campFiltrado;
   const tl=kpis.reduce((a,r)=>a+Number(r.leads_hoje),0);
+  // Totais do PERÍODO — usados em Leads/Investimento/CPL, e também em
+  // CAC/ROI/Tx. conversão quando há Vendas/Receita reais do período
+  // (Funil Diário tem essas colunas por dia/empresa).
   let lm,inv;
   if(dateFilterOn){
     lm=campFiltrado.reduce((a,r)=>a+r.leads,0);
@@ -828,12 +831,27 @@ function renderKPIs(kpis,s,campFiltrado,funilFiltrado){
   }
   const meta=kpis.reduce((a,r)=>a+Number(r.meta_mes),0);
   const cpl=lm>0?inv/lm:0;
-  const vd=kpis.reduce((a,r)=>a+Math.round(Number(r.leads_mes)*Number(r.taxa)/100),0);
+
+  // Vendas/Receita: usa o período exato (Funil Diário) quando o filtro de
+  // data está ativo e há dado real ali — nunca mistura investimento do
+  // período com vendas/receita do mês (era esse o bug: CAC saía igual ao
+  // investimento porque dividia por uma estimativa de mês inteiro).
+  // Sem dado real no período, mostra "sem dado" em vez de estimar errado.
+  let vd, rec, vendasRealNoPeriodo;
+  if(dateFilterOn){
+    vendasRealNoPeriodo=funilFiltrado&&funilFiltrado.some(r=>r.vendas>0||r.receita>0);
+    vd=funilFiltrado?funilFiltrado.reduce((a,r)=>a+(r.vendas||0),0):0;
+    rec=funilFiltrado?funilFiltrado.reduce((a,r)=>a+(r.receita||0),0):0;
+  } else {
+    vd=kpis.reduce((a,r)=>a+Math.round(Number(r.leads_mes)*Number(r.taxa)/100),0);
+    rec=kpis.reduce((a,r)=>a+Number(r.receita),0);
+    vendasRealNoPeriodo=true; // n/a, não é modo período
+  }
   const cac=vd>0?inv/vd:0;
-  const rec=kpis.reduce((a,r)=>a+Number(r.receita),0);
   const roi=inv>0?rec/inv:0;
   const tx=lm>0?vd/lm*100:0;
   const pip=kpis.reduce((a,r)=>a+Number(r.pipeline),0);
+  const recMes=kpis.reduce((a,r)=>a+Number(r.receita),0);
   const mp=meta>0?Math.round(lm/meta*100):0;
 
   // MQL e SQL: usa Funil Diário se o período filtrado tiver dado (mais preciso);
@@ -890,10 +908,10 @@ function renderKPIs(kpis,s,campFiltrado,funilFiltrado){
     {l:'Qualificados',v:sql,s:((dateFilterOn&&!qualificadosNoPeriodo)?'<span class="mu">Mês todo · </span>':'')+'<span style="color:#10B981">'+sqlPct+'% dos leads</span>',cl:'sql'},
     {l:dateFilterOn?'Investimento no período':'Investimento',v:fmtK(inv),s:dateFilterOn?'<span class="mu">Campanhas Diárias</span>':varSeta(inv,prevInv2,true),cl:''},
     {l:'CPL médio',v:fmtBRL(cpl),s:dateFilterOn?'<span class="mu">No período selecionado</span>':varSeta(cpl,prevCpl2,false),cl:''},
-    {l:'CAC médio',v:cac>0?fmtBRL(cac):'—',s:(dateFilterOn?'<span class="mu">Mês todo · </span>':'')+(cac>0?varSeta(cac,prevCac2,false):'<span class="mu">Sem vendas</span>'),cl:''},
-    {l:'ROI médio',v:roi>0?roi.toFixed(2)+'x':'—',s:(dateFilterOn?'<span class="mu">Mês todo · </span>':'')+(roi>0?varSeta(roi,prevRoi2,true):'<span class="mu">Sem receita</span>'),cl:''},
-    {l:'Tx. conversão',v:tx.toFixed(1)+'%',s:'<span class="mu">Lead → cliente'+(dateFilterOn?' (mês)':'')+'</span>',cl:''},
-    {l:'Pipeline',v:pip>0?fmtK(pip):fmtK(rec),s:pip>0?('<span class="mu">Em negociação'+(dateFilterOn?' (mês)':'')+'</span>'):('<span class="mu">Receita acumulada'+(dateFilterOn?' (mês)':'')+'</span>'),cl:'hi'},
+    {l:'CAC médio',v:cac>0?fmtBRL(cac):'—',s:dateFilterOn?(cac>0?'<span class="mu">No período selecionado</span>':'<span class="mu">Sem venda no período</span>'):(cac>0?varSeta(cac,prevCac2,false):'<span class="mu">Sem vendas</span>'),cl:''},
+    {l:'ROI médio',v:roi>0?roi.toFixed(2)+'x':'—',s:dateFilterOn?(roi>0?'<span class="mu">No período selecionado</span>':'<span class="mu">Sem receita no período</span>'):(roi>0?varSeta(roi,prevRoi2,true):'<span class="mu">Sem receita</span>'),cl:''},
+    {l:'Tx. conversão',v:tx.toFixed(1)+'%',s:'<span class="mu">Lead → cliente'+(dateFilterOn?' (período)':'')+'</span>',cl:''},
+    {l:'Pipeline',v:pip>0?fmtK(pip):fmtK(recMes),s:pip>0?'<span class="mu">Em negociação (mês)</span>':'<span class="mu">Receita acumulada (mês)</span>',cl:'hi'},
   ].map(k=>'<div class="kc '+k.cl+'"><p class="kl">'+k.l+'</p><p class="kv">'+k.v+'</p><p class="ks">'+k.s+'</p></div>').join('');
 }
 
