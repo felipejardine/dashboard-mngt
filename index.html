@@ -1075,7 +1075,8 @@ function renderFunnel(kpis,s,funilFiltrado,campFiltrado){
   }
   // "Perdidos" não é etapa de avanço do funil, é saída — mostrado por último,
   // sempre em vermelho, com % sobre o total de Leads (não sobre a etapa anterior).
-  const temPerdido=perdido>0;
+  // "Perdidos" existe só no funil de Área Incrível (Terrenistas não usa essa etapa)
+  const temPerdido=isAreaIncrivel&&perdido>0;
   if(temPerdido) fd.push({l:'Perdidos',v:perdido,isPerdido:true});
 
   const fcBase=['#2563EB','#7C3AED','#A855F7','#C026D3','#DB2777','#0891B2','#F59E0B'];
