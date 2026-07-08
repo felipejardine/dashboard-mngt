@@ -364,12 +364,12 @@ function agregarFunilDiario(selectedEmpresas, fromDate, toDate, ano){
   if(!linhas.length) return null;
   const porEmpresa={};
   linhas.forEach(r=>{
-    if(!porEmpresa[r.empresa]) porEmpresa[r.empresa]={empresa:r.empresa,mql:0,sql:0,oportunidades:0,negociacoes:0,vendas:0,receita:0,visita_agendada:0,visita_realizada:0,em_atendimento:0,pre_analise:0,qualificado_tr:0};
+    if(!porEmpresa[r.empresa]) porEmpresa[r.empresa]={empresa:r.empresa,mql:0,sql:0,oportunidades:0,negociacoes:0,vendas:0,receita:0,visita_agendada:0,visita_realizada:0,em_atendimento:0,pre_analise:0,qualificado_tr:0,perdido:0};
     const g=porEmpresa[r.empresa];
     g.mql+=r.mql; g.sql+=r.sql; g.oportunidades+=r.oportunidades; g.negociacoes+=r.negociacoes;
     g.vendas+=r.vendas; g.receita+=r.receita; g.visita_agendada+=r.visita_agendada;
     g.visita_realizada+=r.visita_realizada; g.em_atendimento+=r.em_atendimento;
-    g.pre_analise+=r.pre_analise; g.qualificado_tr+=r.qualificado_tr;
+    g.pre_analise+=r.pre_analise; g.qualificado_tr+=r.qualificado_tr; g.perdido+=(r.perdido||0);
   });
   return Object.values(porEmpresa);
 }
@@ -585,6 +585,7 @@ async function loadAllData(){
               em_atendimento:Number(r['Em Atendimento']||r['Análise de Crédito']||r['Analise de Credito'])||0,
               pre_analise:Number(r['Pré Análise']||r['Pre Analise'])||0,
               qualificado_tr:Number(r['Qualificado'])||0,
+              perdido:Number(r['Perdido'])||0,
             }));
           }
         });
@@ -649,6 +650,7 @@ async function loadAllData(){
             em_atendimento:Number(r['Em Atendimento'])||0,
             pre_analise:Number(r['Pré Análise']||r['Pre Analise'])||0,
             qualificado_tr:Number(r['Qualificado'])||0,
+            perdido:Number(r['Perdido'])||0,
           };
         });
     }
@@ -1025,7 +1027,7 @@ function renderFunnel(kpis,s,funilFiltrado,campFiltrado){
   const lm=campFiltrado?campFiltrado.reduce((a,r)=>a+r.leads,0):kpis.reduce((a,r)=>a+Number(r.leads_mes),0);
   const vd=kpis.reduce((a,r)=>a+Math.round(Number(r.leads_mes)*Number(r.taxa)/100),0);
 
-  let mql,sql,opor,neg,vendas,visitaAg,visitaReal,emAtendimento;
+  let mql,sql,opor,neg,vendas,visitaAg,visitaReal,emAtendimento,perdido;
   const funRows=funilFiltrado||getFunilData(s);
   if(funRows&&funRows.length>0){
     mql=funRows.reduce((a,r)=>a+r.mql,0);
@@ -1036,13 +1038,14 @@ function renderFunnel(kpis,s,funilFiltrado,campFiltrado){
     visitaAg=funRows.reduce((a,r)=>a+(r.visita_agendada||0),0);
     visitaReal=funRows.reduce((a,r)=>a+(r.visita_realizada||0),0);
     emAtendimento=funRows.reduce((a,r)=>a+(r.em_atendimento||0),0);
+    perdido=funRows.reduce((a,r)=>a+(r.perdido||0),0);
   } else {
     mql=Math.round(lm*MQL_RATE);
     sql=Math.round(lm*SQL_RATE);
     opor=Math.round(lm*.11);
     neg=Math.round(lm*.06);
     vendas=vd;
-    visitaAg=0;visitaReal=0;emAtendimento=0;
+    visitaAg=0;visitaReal=0;emAtendimento=0;perdido=0;
   }
 
   const isAreaIncrivel=s.empresa&&s.empresa.split('|').some(e=>e==='Área Incrível')&&!s.empresa.split('|').some(e=>e==='Mais Armazém'||e==='Centro Logístico');
@@ -1070,6 +1073,10 @@ function renderFunnel(kpis,s,funilFiltrado,campFiltrado){
     fd.push({l:'Negociações',v:neg});
     fd.push({l:'Vendas',v:vendas});
   }
+  // "Perdidos" não é etapa de avanço do funil, é saída — mostrado por último,
+  // sempre em vermelho, com % sobre o total de Leads (não sobre a etapa anterior).
+  const temPerdido=perdido>0;
+  if(temPerdido) fd.push({l:'Perdidos',v:perdido,isPerdido:true});
 
   const fcBase=['#2563EB','#7C3AED','#A855F7','#C026D3','#DB2777','#0891B2','#F59E0B'];
   const fcTr=['#7C3AED','#A855F7','#C026D3','#DB2777'];
@@ -1084,8 +1091,9 @@ function renderFunnel(kpis,s,funilFiltrado,campFiltrado){
 
   document.getElementById('funnel').innerHTML=fd.map((f,i)=>{
     const pw=Math.max(5,Math.round(f.v/Math.max(fd[0].v,1)*100));
-    const cv=i>0&&fd[i-1].v>0?' · '+Math.round(f.v/fd[i-1].v*100)+'% ant.':'';
-    return`<div class="fi"><div class="fh"><span class="fn">${f.l}</span><span class="fv">${f.v.toLocaleString('pt-BR')}${cv}</span></div><div class="ft"><div class="fb" style="width:${pw}%;background:${fc[i]}"></div></div></div>`;
+    const cor=f.isPerdido?'#DC2626':fc[i];
+    const cv=f.isPerdido?(fd[0].v>0?' · '+Math.round(f.v/fd[0].v*100)+'% dos leads':''):(i>0&&fd[i-1].v>0?' · '+Math.round(f.v/fd[i-1].v*100)+'% ant.':'');
+    return`<div class="fi"><div class="fh"><span class="fn">${f.l}</span><span class="fv">${f.v.toLocaleString('pt-BR')}${cv}</span></div><div class="ft"><div class="fb" style="width:${pw}%;background:${cor}"></div></div></div>`;
   }).join('');
 }
 
