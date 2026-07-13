@@ -350,6 +350,32 @@ function getCampDiariasFiltrado(s){
   return filtrarCampDiarias(selectedEmpresas, fromDate, toDate, anoPadrao);
 }
 
+// Soma Leads Diários (GHL, fonte real de leads) no intervalo exato do filtro.
+// Usado pro número de "Leads" em vez de Campanhas Diárias (Meta) — Leads deve
+// sempre refletir o volume real do CRM, com ou sem filtro de data; só
+// Investimento/CPL/CAC/ROI é que dependem do Meta, por não ter outra fonte de gasto.
+function getLeadsDiariosFiltrado(s){
+  const selectedEmpresas=getSelectedEmpresas(s.empresa);
+  const from=document.getElementById('fDateFrom').value;
+  const to=document.getElementById('fDateTo').value;
+  const fromDate=new Date(from+'T00:00:00');
+  const toDate=new Date(to+'T23:59:59');
+  const ano=Number(from.split('-')[0]);
+  const mapaEmpresaCol={'Área Incrível':'Área Incrível','Terrenistas':'Terrenistas','Mais Armazém':'Mais Armazém','Centro Logístico':'Centro Logístico'};
+  let total=0;
+  (DB.leadsDiariosAll||[]).forEach(r=>{
+    const data=(r['Data']||r['data']||'').trim();
+    const partes=data.split('/');
+    if(partes.length!==2) return;
+    const d=new Date(ano,Number(partes[1])-1,Number(partes[0]));
+    if(d<fromDate||d>toDate) return;
+    selectedEmpresas.forEach(emp=>{
+      if(mapaEmpresaCol[emp]) total+=Number(r[mapaEmpresaCol[emp]])||0;
+    });
+  });
+  return total;
+}
+
 // Núcleo comum: agrega Funil Diário por empresa dentro de um intervalo
 // explícito. Retorna null se não achar nenhuma linha no intervalo.
 function agregarFunilDiario(selectedEmpresas, fromDate, toDate, ano){
@@ -783,7 +809,8 @@ const campData=campBase.filter(c=>getSelectedEmpresas(s.empresa).includes(c.empr
   }
   document.getElementById('subTitle').textContent=s.empresa?getSelectedEmpresas(s.empresa).join(' · '):'Área Incrível · Terrenistas · Mais Armazém · Centro Logístico';
   document.getElementById('periodLabel').textContent=dateFilterOn?(document.getElementById('fDateFrom').value.split('-').reverse().join('/')+' – '+document.getElementById('fDateTo').value.split('-').reverse().join('/')):s.period;
-  renderKPIs(kpis,s,campDiariasFiltrado,funilDiarioFiltrado);
+  const leadsDiariosFiltrado=dateFilterOn?getLeadsDiariosFiltrado(s):null;
+  renderKPIs(kpis,s,campDiariasFiltrado,funilDiarioFiltrado,leadsDiariosFiltrado);
   if(dateFilterOn){
     const from=document.getElementById('fDateFrom').value;
     const to=document.getElementById('fDateTo').value;
@@ -817,15 +844,15 @@ function qualificadosDe(r){
   return r.empresa==='Terrenistas' ? (r.qualificado_tr||0) : (r.sql||0);
 }
 
-function renderKPIs(kpis,s,campFiltrado,funilFiltrado){
+function renderKPIs(kpis,s,campFiltrado,funilFiltrado,leadsDiariosFiltrado){
   const dateFilterOn=!!campFiltrado;
   const tl=kpis.reduce((a,r)=>a+Number(r.leads_hoje),0);
-  // Totais do PERÍODO — usados em Leads/Investimento/CPL, e também em
-  // CAC/ROI/Tx. conversão quando há Vendas/Receita reais do período
-  // (Funil Diário tem essas colunas por dia/empresa).
+  // Leads sempre vem do GHL (Leads Diários), com ou sem filtro de data — é o
+  // volume real do CRM. Investimento continua do Meta (Campanhas Diárias),
+  // única fonte de gasto que existe. CPL cruza as duas de propósito.
   let lm,inv;
   if(dateFilterOn){
-    lm=campFiltrado.reduce((a,r)=>a+r.leads,0);
+    lm=leadsDiariosFiltrado;
     inv=campFiltrado.reduce((a,r)=>a+r.investimento,0);
   } else {
     lm=kpis.reduce((a,r)=>a+Number(r.leads_mes),0);
@@ -906,7 +933,7 @@ function renderKPIs(kpis,s,campFiltrado,funilFiltrado){
 
   document.getElementById('kpiGrid').innerHTML=[
     {l:'Leads hoje',v:tl,s:leadsHojeSeta,cl:''},
-    {l:dateFilterOn?'Leads no período':'Leads do mês',v:lm,s:dateFilterOn?'<span class="mu">Campanhas Diárias</span>':'Meta '+meta+' · <b style="color:#111827">'+mp+'%</b>',cl:''},
+    {l:dateFilterOn?'Leads no período':'Leads do mês',v:lm,s:dateFilterOn?'<span class="mu">Leads Diários</span>':'Meta '+meta+' · <b style="color:#111827">'+mp+'%</b>',cl:''},
     {l:'Qualificados',v:sql,s:((dateFilterOn&&!qualificadosNoPeriodo)?'<span class="mu">Mês todo · </span>':'')+'<span style="color:#10B981">'+sqlPct+'% dos leads</span>',cl:'sql'},
     {l:dateFilterOn?'Investimento no período':'Investimento',v:fmtK(inv),s:dateFilterOn?'<span class="mu">Campanhas Diárias</span>':varSeta(inv,prevInv2,true),cl:''},
     {l:'CPL médio',v:fmtBRL(cpl),s:dateFilterOn?'<span class="mu">No período selecionado</span>':varSeta(cpl,prevCpl2,false),cl:''},
@@ -1108,6 +1135,30 @@ function renderCacRoi(kpis){
 }
 
 
+// Mesma lógica de getLeadsDiariosFiltrado, mas devolve o total por empresa
+// (não só a soma agregada) — usado na tabela "Performance por empresa".
+function getLeadsDiariosPorEmpresa(s){
+  const selectedEmpresas=getSelectedEmpresas(s.empresa);
+  const from=document.getElementById('fDateFrom').value;
+  const to=document.getElementById('fDateTo').value;
+  const fromDate=new Date(from+'T00:00:00');
+  const toDate=new Date(to+'T23:59:59');
+  const ano=Number(from.split('-')[0]);
+  const porEmpresa={};
+  selectedEmpresas.forEach(e=>porEmpresa[e]=0);
+  (DB.leadsDiariosAll||[]).forEach(r=>{
+    const data=(r['Data']||r['data']||'').trim();
+    const partes=data.split('/');
+    if(partes.length!==2) return;
+    const d=new Date(ano,Number(partes[1])-1,Number(partes[0]));
+    if(d<fromDate||d>toDate) return;
+    selectedEmpresas.forEach(emp=>{
+      porEmpresa[emp]+=Number(r[emp])||0;
+    });
+  });
+  return porEmpresa;
+}
+
 function renderDailyEmpresaTable(s,funilFiltrado){
   const dateWrap=document.getElementById('dateRangeWrap');
   const selectedEmpresas=getSelectedEmpresas(s.empresa);
@@ -1143,17 +1194,23 @@ function renderDailyEmpresaTable(s,funilFiltrado){
     return d>=fromDate&&d<=toDate;
   });
 
-  if(!filtrado.length){
+  const leadsPorEmpresa=getLeadsDiariosPorEmpresa(s);
+  const temLeadsReal=Object.values(leadsPorEmpresa).some(v=>v>0);
+  if(!filtrado.length&&!temLeadsReal){
     document.getElementById('empresaTb').innerHTML='<tr><td colspan="11" class="empty">Nenhum dado para o período selecionado.</td></tr>';
     return true;
   }
 
-  // Agrupa por empresa
+  // Agrupa Investimento por empresa (Meta, Campanhas Diárias)
   const grupos={};
   filtrado.forEach(r=>{
     if(!grupos[r.empresa]) grupos[r.empresa]={empresa:r.empresa,inv:0,leads:0,vendas:0,receita:0};
     grupos[r.empresa].inv+=r.investimento;
-    grupos[r.empresa].leads+=r.leads;
+  });
+  // Leads sempre do GHL (Leads Diários), não do Meta — mesmo princípio da Visão Geral
+  Object.keys(leadsPorEmpresa).forEach(emp=>{
+    if(!grupos[emp]) grupos[emp]={empresa:emp,inv:0,leads:0,vendas:0,receita:0};
+    grupos[emp].leads=leadsPorEmpresa[emp];
   });
 
   // Busca SQL/Qualificado do funil — usa o diário (período exato) quando
