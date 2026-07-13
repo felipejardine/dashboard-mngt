@@ -188,7 +188,7 @@ tr:hover td{background:#F9FAFB}
     <tbody id="campTb"></tbody>
   </table></div></div>
 
-  <p class="st">Alertas inteligentes</p>
+  <p class="st" id="alertsSectionTitle">Alertas inteligentes</p>
   <div id="alertsBox"></div>
 </div>
 </div></div>
@@ -296,7 +296,7 @@ function trimKeys(row){
   return out;
 }
 function fmtBRL(v){return'R$'+Math.round(Number(v)).toLocaleString('pt-BR')}
-function fmtK(v){return v>=1000000?'R$'+(v/1000000).toFixed(2)+'M':fmtBRL(v)}
+function fmtK(v){return fmtBRL(v)}
 function destroyChart(id){if(charts[id]){charts[id].destroy();delete charts[id];}}
 function getSelectedEmpresas(empresaStr){
   if(!empresaStr) return ['Área Incrível','Terrenistas','Mais Armazém','Centro Logístico'];
@@ -824,10 +824,10 @@ const campData=campBase.filter(c=>getSelectedEmpresas(s.empresa).includes(c.empr
     renderCompare(kpis,s);
   }
   renderDaily(s);renderMonthly(s);
-  renderPlatform(platData);renderFunnel(kpis,s,funilDiarioFiltrado,campDiariasFiltrado);renderCacRoi(kpis);
+  renderPlatform(platData);renderFunnel(kpis,s,funilDiarioFiltrado,campDiariasFiltrado,leadsDiariosFiltrado);renderCacRoi(kpis);
   if(!renderDailyEmpresaTable(s,funilDiarioFiltrado)) renderEmpresaTable(kpis,s);
   if(dateFilterOn) renderCampTableDiario(campDiariasFiltrado); else renderCampTable(campData);
-  renderAlerts(kpis,campData);
+  renderAlerts(kpis,campData,dateFilterOn);
 }
 
 function getFunilData(s){
@@ -1050,9 +1050,16 @@ function renderPlatform(data){
   charts.plat=new Chart(document.getElementById('c3'),{type:'bar',data:{labels:data.map(r=>r.p),datasets:[{data:data.map(r=>r.leads),backgroundColor:data.map(r=>r.cor),borderRadius:3}]},options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:tc,font:{size:10}},grid:{color:gc},beginAtZero:true},y:{ticks:{color:tc,font:{size:10}},grid:{display:false}}}}});
 }
 
-function renderFunnel(kpis,s,funilFiltrado,campFiltrado){
-  const lm=campFiltrado?campFiltrado.reduce((a,r)=>a+r.leads,0):kpis.reduce((a,r)=>a+Number(r.leads_mes),0);
-  const vd=kpis.reduce((a,r)=>a+Math.round(Number(r.leads_mes)*Number(r.taxa)/100),0);
+function renderFunnel(kpis,s,funilFiltrado,campFiltrado,leadsDiariosFiltrado){
+  const dateFilterOnFunil=!!campFiltrado;
+  // Leads sempre do GHL (Leads Diários) — mesma fonte da Visão Geral, nunca
+  // do Meta (Campanhas Diárias), pra não mostrar dois números de "Leads"
+  // diferentes na mesma tela pro mesmo período.
+  const lm=dateFilterOnFunil?leadsDiariosFiltrado:kpis.reduce((a,r)=>a+Number(r.leads_mes),0);
+  // vd é só uma ESTIMATIVA de reserva, usada apenas se não houver nenhuma venda
+  // real no Funil Diário — sempre calculada em cima do lm do MESMO recorte
+  // (nunca mistura período com mês), pra não reintroduzir o bug já corrigido.
+  const vd=dateFilterOnFunil?Math.round(lm*SQL_RATE*0.3):kpis.reduce((a,r)=>a+Math.round(Number(r.leads_mes)*Number(r.taxa)/100),0);
 
   let mql,sql,opor,neg,vendas,visitaAg,visitaReal,emAtendimento,perdido;
   const funRows=funilFiltrado||getFunilData(s);
@@ -1283,7 +1290,11 @@ function renderCampTableDiario(camps){
   }).join('');
 }
 
-function renderAlerts(kpis,camps){
+function renderAlerts(kpis,camps,dateFilterOn){
+  const titleEl=document.getElementById('alertsSectionTitle');
+  if(titleEl) titleEl.innerHTML=dateFilterOn
+    ? 'Alertas inteligentes <span class="mu" style="font-weight:400;font-size:12px">— baseado no mês corrente (campanhas não têm ROI por dia)</span>'
+    : 'Alertas inteligentes';
   const alerts=[];
 
   // ROI por empresa — só considera quem tem ROI real (>0)
