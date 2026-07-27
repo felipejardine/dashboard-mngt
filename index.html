@@ -386,13 +386,14 @@ function agregarFunilDiario(selectedEmpresas, fromDate, toDate, ano){
   if(!linhas.length) return null;
   const porEmpresa={};
   linhas.forEach(r=>{
-    if(!porEmpresa[r.empresa]) porEmpresa[r.empresa]={empresa:r.empresa,mql:0,sql:0,oportunidades:0,negociacoes:0,vendas:0,receita:0,visita_agendada:0,visita_realizada:0,em_atendimento:0,pre_analise:0,qualificado_tr:0,perdido:0,dia_1:0,dia_3:0,dia_7:0,dia_15:0,nutricao:0};
+    if(!porEmpresa[r.empresa]) porEmpresa[r.empresa]={empresa:r.empresa,mql:0,sql:0,oportunidades:0,negociacoes:0,vendas:0,receita:0,visita_agendada:0,visita_realizada:0,em_atendimento:0,pre_analise:0,qualificado_tr:0,perdido:0,dia_1:0,dia_3:0,dia_7:0,dia_15:0,nutricao:0,aguardando_atendimento:0,aguardando_kmz:0};
     const g=porEmpresa[r.empresa];
     g.mql+=r.mql; g.sql+=r.sql; g.oportunidades+=r.oportunidades; g.negociacoes+=r.negociacoes;
     g.vendas+=r.vendas; g.receita+=r.receita; g.visita_agendada+=r.visita_agendada;
     g.visita_realizada+=r.visita_realizada; g.em_atendimento+=r.em_atendimento;
     g.pre_analise+=r.pre_analise; g.qualificado_tr+=r.qualificado_tr; g.perdido+=(r.perdido||0);
     g.dia_1+=(r.dia_1||0); g.dia_3+=(r.dia_3||0); g.dia_7+=(r.dia_7||0); g.dia_15+=(r.dia_15||0); g.nutricao+=(r.nutricao||0);
+    g.aguardando_atendimento+=(r.aguardando_atendimento||0); g.aguardando_kmz+=(r.aguardando_kmz||0);
   });
   return Object.values(porEmpresa);
 }
@@ -614,6 +615,8 @@ async function loadAllData(){
               dia_7:Number(r['Dia 7'])||0,
               dia_15:Number(r['Dia 15'])||0,
               nutricao:Number(r['Nutrição']||r['Nutricao'])||0,
+              aguardando_atendimento:Number(r['Aguardando Atendimento'])||0,
+              aguardando_kmz:Number(r['Aguardando KMZ'])||0,
             }));
           }
         });
@@ -684,6 +687,8 @@ async function loadAllData(){
             dia_7:Number(r['Dia 7'])||0,
             dia_15:Number(r['Dia 15'])||0,
             nutricao:Number(r['Nutrição']||r['Nutricao'])||0,
+            aguardando_atendimento:Number(r['Aguardando Atendimento'])||0,
+            aguardando_kmz:Number(r['Aguardando KMZ'])||0,
           };
         });
     }
@@ -1101,8 +1106,10 @@ function renderFunnel(kpis,s,funilFiltrado,campFiltrado,leadsDiariosFiltrado){
   // Campos exclusivos Terrenistas
   const preAnalise=funRows?funRows.reduce((a,r)=>a+(r.pre_analise||0),0):0;
   const qualificadoTr=funRows?funRows.reduce((a,r)=>a+(r.qualificado_tr||0),0):0;
+  const aguardandoAtendimento=funRows?funRows.reduce((a,r)=>a+(r.aguardando_atendimento||0),0):0;
+  const aguardandoKmz=funRows?funRows.reduce((a,r)=>a+(r.aguardando_kmz||0),0):0;
 
-  let fd=[{l:'Leads',v:lm}];
+  let fd=[{l:isTerrenistas?'Cadastro':'Leads',v:lm}];
   if(isAreaIncrivel){
     fd.push({l:'Dia 1',v:dia1});
     fd.push({l:'Dia 3',v:dia3});
@@ -1116,9 +1123,12 @@ function renderFunnel(kpis,s,funilFiltrado,campFiltrado,leadsDiariosFiltrado){
     fd.push({l:'Em Reserva',v:opor});
     fd.push({l:'Vendas',v:vendas});
   } else if(isTerrenistas){
+    fd.push({l:'Aguardando Atendimento',v:aguardandoAtendimento});
+    fd.push({l:'Em Atendimento',v:emAtendimento});
     fd.push({l:'Pré Análise',v:preAnalise});
     fd.push({l:'Qualificado',v:qualificadoTr});
     fd.push({l:'Em Negociação',v:neg});
+    fd.push({l:'Aguardando KMZ',v:aguardandoKmz});
   } else {
     fd.push({l:'SQL',v:sql});
     fd.push({l:'Oportunidades',v:opor});
@@ -1132,7 +1142,7 @@ function renderFunnel(kpis,s,funilFiltrado,campFiltrado,leadsDiariosFiltrado){
   if(temPerdido) fd.push({l:'Perdidos',v:perdido,isPerdido:true});
 
   const fcBase=['#2563EB','#3B82F6','#60A5FA','#818CF8','#A78BFA','#7C3AED','#A855F7','#C026D3','#DB2777','#0891B2','#0D9488','#F59E0B'];
-  const fcTr=['#7C3AED','#A855F7','#C026D3','#DB2777'];
+  const fcTr=['#7C3AED','#8B5CF6','#A855F7','#C026D3','#DB2777','#E11D48','#F97316'];
   const fc=isAreaIncrivel?fcBase:isTerrenistas?fcTr:['#2563EB','#059669','#0891B2','#D97706','#F59E0B'];
 
   const subtitleEl=document.getElementById('funnelSubtitle');
