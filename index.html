@@ -85,7 +85,7 @@ tr:hover td{background:#F9FAFB}
     <div>
       <p class="ey">Grupo MNGT</p>
       <h1 class="h1">Dashboard de Marketing</h1>
-      <p class="hs" id="subTitle">Área Incrível · Mais Armazém · Centro Logístico</p>
+      <p class="hs" id="subTitle">Área Incrível · Terrenistas</p>
     </div>
     <div style="display:flex;align-items:center;gap:8px">
       <span class="last-update" id="lastUpdate"></span>
@@ -109,10 +109,6 @@ tr:hover td{background:#F9FAFB}
         <input type="checkbox" id="cb_ai" value="Área Incrível" onchange="onEmpresaChange()" checked style="accent-color:#2563EB"> Área Incrível</label>
       <label style="display:flex;align-items:center;gap:4px;cursor:pointer;font-size:12px;padding:4px 8px;border-radius:6px;background:#F5F3FF;color:#6D28D9;font-weight:600">
         <input type="checkbox" id="cb_tr" value="Terrenistas" onchange="onEmpresaChange()" checked style="accent-color:#7C3AED"> Terrenistas</label>
-      <label style="display:flex;align-items:center;gap:4px;cursor:pointer;font-size:12px;padding:4px 8px;border-radius:6px;background:#F0FDF4;color:#047857;font-weight:600">
-        <input type="checkbox" id="cb_ma" value="Mais Armazém" onchange="onEmpresaChange()" checked style="accent-color:#059669"> Mais Armazém</label>
-      <label style="display:flex;align-items:center;gap:4px;cursor:pointer;font-size:12px;padding:4px 8px;border-radius:6px;background:#FFFBEB;color:#92400E;font-weight:600">
-        <input type="checkbox" id="cb_cl" value="Centro Logístico" onchange="onEmpresaChange()" checked style="accent-color:#D97706"> Centro Logístico</label>
     </div>
     <select id="fPlat" onchange="applyFilters()">
       <option>Todas as plataformas</option><option>Meta Ads</option><option>Google Ads</option><option>LinkedIn Ads</option><option>TikTok Ads</option><option>WhatsApp</option><option>Orgânico</option><option>Indicação</option>
@@ -299,13 +295,13 @@ function fmtBRL(v){return'R$'+Math.round(Number(v)).toLocaleString('pt-BR')}
 function fmtK(v){return fmtBRL(v)}
 function destroyChart(id){if(charts[id]){charts[id].destroy();delete charts[id];}}
 function getSelectedEmpresas(empresaStr){
-  if(!empresaStr) return ['Área Incrível','Terrenistas','Mais Armazém','Centro Logístico'];
+  if(!empresaStr) return ['Área Incrível','Terrenistas'];
   return empresaStr.split('|');
 }
 function getState(){
   const cbs=document.querySelectorAll('#fEmpresa input[type=checkbox]:checked');
   const sel=Array.from(cbs).map(c=>c.value);
-  const all=['Área Incrível','Terrenistas','Mais Armazém','Centro Logístico'];
+  const all=['Área Incrível','Terrenistas'];
   const empresa=sel.length===0||sel.length===all.length?null:sel.join('|');
   return{period:document.getElementById('fPeriod').value,empresa,plat:document.getElementById('fPlat').value,camp:document.getElementById('fCamp').value};
 }
@@ -390,12 +386,13 @@ function agregarFunilDiario(selectedEmpresas, fromDate, toDate, ano){
   if(!linhas.length) return null;
   const porEmpresa={};
   linhas.forEach(r=>{
-    if(!porEmpresa[r.empresa]) porEmpresa[r.empresa]={empresa:r.empresa,mql:0,sql:0,oportunidades:0,negociacoes:0,vendas:0,receita:0,visita_agendada:0,visita_realizada:0,em_atendimento:0,pre_analise:0,qualificado_tr:0,perdido:0};
+    if(!porEmpresa[r.empresa]) porEmpresa[r.empresa]={empresa:r.empresa,mql:0,sql:0,oportunidades:0,negociacoes:0,vendas:0,receita:0,visita_agendada:0,visita_realizada:0,em_atendimento:0,pre_analise:0,qualificado_tr:0,perdido:0,dia_1:0,dia_3:0,dia_7:0,dia_15:0,nutricao:0};
     const g=porEmpresa[r.empresa];
     g.mql+=r.mql; g.sql+=r.sql; g.oportunidades+=r.oportunidades; g.negociacoes+=r.negociacoes;
     g.vendas+=r.vendas; g.receita+=r.receita; g.visita_agendada+=r.visita_agendada;
     g.visita_realizada+=r.visita_realizada; g.em_atendimento+=r.em_atendimento;
     g.pre_analise+=r.pre_analise; g.qualificado_tr+=r.qualificado_tr; g.perdido+=(r.perdido||0);
+    g.dia_1+=(r.dia_1||0); g.dia_3+=(r.dia_3||0); g.dia_7+=(r.dia_7||0); g.dia_15+=(r.dia_15||0); g.nutricao+=(r.nutricao||0);
   });
   return Object.values(porEmpresa);
 }
@@ -586,7 +583,7 @@ async function loadAllData(){
   const mesMap={};
   const hoje2=new Date();
   for(let i=0;i<24;i++){const d=new Date(hoje2.getFullYear(),hoje2.getMonth()-i,1);const k=mesesAbrev[d.getMonth()]+' '+d.getFullYear();const v=mesesAbrev[d.getMonth()]+'/'+String(d.getFullYear()).slice(2);mesMap[k]=v;}
-      const empresasValidas=['Área Incrível','Mais Armazém','Centro Logístico','Terrenistas'];
+      const empresasValidas=['Área Incrível','Terrenistas'];
       const validFunil=fun.filter(r=>empresasValidas.includes((r['Empresa']||'').trim()));
       if(validFunil.length>0){
         // Gera lista de períodos dinamicamente (mês atual + 12 meses anteriores)
@@ -612,6 +609,11 @@ async function loadAllData(){
               pre_analise:Number(r['Pré Análise']||r['Pre Analise'])||0,
               qualificado_tr:Number(r['Qualificado'])||0,
               perdido:Number(r['Perdido'])||0,
+              dia_1:Number(r['Dia 1'])||0,
+              dia_3:Number(r['Dia 3'])||0,
+              dia_7:Number(r['Dia 7'])||0,
+              dia_15:Number(r['Dia 15'])||0,
+              nutricao:Number(r['Nutrição']||r['Nutricao'])||0,
             }));
           }
         });
@@ -677,6 +679,11 @@ async function loadAllData(){
             pre_analise:Number(r['Pré Análise']||r['Pre Analise'])||0,
             qualificado_tr:Number(r['Qualificado'])||0,
             perdido:Number(r['Perdido'])||0,
+            dia_1:Number(r['Dia 1'])||0,
+            dia_3:Number(r['Dia 3'])||0,
+            dia_7:Number(r['Dia 7'])||0,
+            dia_15:Number(r['Dia 15'])||0,
+            nutricao:Number(r['Nutrição']||r['Nutricao'])||0,
           };
         });
     }
@@ -692,7 +699,7 @@ async function loadAllData(){
 }
 
 function mergeKpis(rows){
-  const empresasValidas=['Área Incrível','Mais Armazém','Centro Logístico','Terrenistas'];
+  const empresasValidas=['Área Incrível','Terrenistas'];
   // mesMap gerado dinamicamente
   const mesesAbrev=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
   const mesMap={};
@@ -807,7 +814,7 @@ const campData=campBase.filter(c=>getSelectedEmpresas(s.empresa).includes(c.empr
     const hideFunnel=hasAI&&hasTR&&!hasOthers;
     funnelSection.style.display=hideFunnel?'none':'block';
   }
-  document.getElementById('subTitle').textContent=s.empresa?getSelectedEmpresas(s.empresa).join(' · '):'Área Incrível · Terrenistas · Mais Armazém · Centro Logístico';
+  document.getElementById('subTitle').textContent=s.empresa?getSelectedEmpresas(s.empresa).join(' · '):'Área Incrível · Terrenistas';
   document.getElementById('periodLabel').textContent=dateFilterOn?(document.getElementById('fDateFrom').value.split('-').reverse().join('/')+' – '+document.getElementById('fDateTo').value.split('-').reverse().join('/')):s.period;
   const leadsDiariosFiltrado=dateFilterOn?getLeadsDiariosFiltrado(s):null;
   renderKPIs(kpis,s,campDiariasFiltrado,funilDiarioFiltrado,leadsDiariosFiltrado);
@@ -1061,7 +1068,7 @@ function renderFunnel(kpis,s,funilFiltrado,campFiltrado,leadsDiariosFiltrado){
   // (nunca mistura período com mês), pra não reintroduzir o bug já corrigido.
   const vd=dateFilterOnFunil?Math.round(lm*SQL_RATE*0.3):kpis.reduce((a,r)=>a+Math.round(Number(r.leads_mes)*Number(r.taxa)/100),0);
 
-  let mql,sql,opor,neg,vendas,visitaAg,visitaReal,emAtendimento,perdido;
+  let mql,sql,opor,neg,vendas,visitaAg,visitaReal,emAtendimento,perdido,dia1,dia3,dia7,dia15,nutricao;
   const funRows=funilFiltrado||getFunilData(s);
   if(funRows&&funRows.length>0){
     mql=funRows.reduce((a,r)=>a+r.mql,0);
@@ -1073,6 +1080,11 @@ function renderFunnel(kpis,s,funilFiltrado,campFiltrado,leadsDiariosFiltrado){
     visitaReal=funRows.reduce((a,r)=>a+(r.visita_realizada||0),0);
     emAtendimento=funRows.reduce((a,r)=>a+(r.em_atendimento||0),0);
     perdido=funRows.reduce((a,r)=>a+(r.perdido||0),0);
+    dia1=funRows.reduce((a,r)=>a+(r.dia_1||0),0);
+    dia3=funRows.reduce((a,r)=>a+(r.dia_3||0),0);
+    dia7=funRows.reduce((a,r)=>a+(r.dia_7||0),0);
+    dia15=funRows.reduce((a,r)=>a+(r.dia_15||0),0);
+    nutricao=funRows.reduce((a,r)=>a+(r.nutricao||0),0);
   } else {
     mql=Math.round(lm*MQL_RATE);
     sql=Math.round(lm*SQL_RATE);
@@ -1080,6 +1092,7 @@ function renderFunnel(kpis,s,funilFiltrado,campFiltrado,leadsDiariosFiltrado){
     neg=Math.round(lm*.06);
     vendas=vd;
     visitaAg=0;visitaReal=0;emAtendimento=0;perdido=0;
+    dia1=0;dia3=0;dia7=0;dia15=0;nutricao=0;
   }
 
   const isAreaIncrivel=s.empresa&&s.empresa.split('|').some(e=>e==='Área Incrível')&&!s.empresa.split('|').some(e=>e==='Mais Armazém'||e==='Centro Logístico');
@@ -1091,6 +1104,11 @@ function renderFunnel(kpis,s,funilFiltrado,campFiltrado,leadsDiariosFiltrado){
 
   let fd=[{l:'Leads',v:lm}];
   if(isAreaIncrivel){
+    fd.push({l:'Dia 1',v:dia1});
+    fd.push({l:'Dia 3',v:dia3});
+    fd.push({l:'Dia 7',v:dia7});
+    fd.push({l:'Dia 15',v:dia15});
+    fd.push({l:'Nutrição',v:nutricao});
     fd.push({l:'Leads Qualificados',v:sql});
     fd.push({l:'Em Atendimento',v:emAtendimento});
     fd.push({l:'Visita Agendada',v:visitaAg});
@@ -1113,7 +1131,7 @@ function renderFunnel(kpis,s,funilFiltrado,campFiltrado,leadsDiariosFiltrado){
   const temPerdido=isAreaIncrivel&&perdido>0;
   if(temPerdido) fd.push({l:'Perdidos',v:perdido,isPerdido:true});
 
-  const fcBase=['#2563EB','#7C3AED','#A855F7','#C026D3','#DB2777','#0891B2','#F59E0B'];
+  const fcBase=['#2563EB','#3B82F6','#60A5FA','#818CF8','#A78BFA','#7C3AED','#A855F7','#C026D3','#DB2777','#0891B2','#0D9488','#F59E0B'];
   const fcTr=['#7C3AED','#A855F7','#C026D3','#DB2777'];
   const fc=isAreaIncrivel?fcBase:isTerrenistas?fcTr:['#2563EB','#059669','#0891B2','#D97706','#F59E0B'];
 
@@ -1121,7 +1139,7 @@ function renderFunnel(kpis,s,funilFiltrado,campFiltrado,leadsDiariosFiltrado){
   if(subtitleEl){
     if(campFiltrado&&funilFiltrado) subtitleEl.textContent='Período selecionado';
     else if(campFiltrado&&!funilFiltrado) subtitleEl.textContent='Mês todo (sem dado diário de funil pro período)';
-    else subtitleEl.textContent='Grupo consolidado';
+    else subtitleEl.textContent=getSelectedEmpresas(s.empresa).join(' · ');
   }
 
   document.getElementById('funnel').innerHTML=fd.map((f,i)=>{
